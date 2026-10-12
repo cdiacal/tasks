@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Tasks" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Tasks" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Avoids a white flash on launch before Compose draws (matches the app background). -->
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

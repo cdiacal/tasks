@@ -26,4 +26,13 @@
     <string name="reminder_title">Tarea pendiente</string>
     <string name="pick_time">Elegir hora</string>
     <string name="next">Siguiente</string>
+    <string name="hero_pending_label">Tareas pendientes</string>
+    <string name="stat_today">Vencen hoy</string>
+    <string name="stat_overdue">Vencidas</string>
+    <string name="stat_done">Hechas</string>
+    <string name="options">Opciones</string>
+    <string name="theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
 </resources>

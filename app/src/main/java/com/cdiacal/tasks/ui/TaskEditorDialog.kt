@@ -9,7 +9,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,11 +20,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.Task
+import com.cdiacal.tasks.ui.components.BotonPrincipal
+import com.cdiacal.tasks.ui.components.BotonSecundario
+import com.cdiacal.tasks.ui.theme.colorGasto
 import java.text.DateFormat
 import java.util.Date
 import java.util.TimeZone
@@ -37,7 +40,12 @@ fun formatDate(utcMillis: Long): String =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskEditorDialog(initial: Task, onDismiss: () -> Unit, onSave: (Task) -> Unit) {
+fun TaskEditorDialog(
+    initial: Task,
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit,
+    onSave: (Task) -> Unit,
+) {
     var title by remember { mutableStateOf(initial.title) }
     var notes by remember { mutableStateOf(initial.notes) }
     var dueDate by remember { mutableStateOf(initial.dueDate) }
@@ -69,20 +77,30 @@ fun TaskEditorDialog(initial: Task, onDismiss: () -> Unit, onSave: (Task) -> Uni
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { showDatePicker = true }) {
-                        Text(dueDate?.let(::formatDate) ?: stringResource(R.string.due_date))
-                    }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BotonSecundario(
+                        texto = dueDate?.let(::formatDate) ?: stringResource(R.string.due_date),
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                     if (dueDate != null) {
                         TextButton(onClick = { dueDate = null }) {
                             Text(stringResource(R.string.no_due_date))
                         }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { showReminderDate = true }) {
-                        Text(reminderAt?.let(::formatReminder) ?: stringResource(R.string.reminder))
-                    }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BotonSecundario(
+                        texto = reminderAt?.let(::formatReminder) ?: stringResource(R.string.reminder),
+                        onClick = { showReminderDate = true },
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                     if (reminderAt != null) {
                         TextButton(onClick = { reminderAt = null }) {
                             Text(stringResource(R.string.no_reminder))
@@ -93,13 +111,19 @@ fun TaskEditorDialog(initial: Task, onDismiss: () -> Unit, onSave: (Task) -> Uni
                     Text(
                         stringResource(R.string.reminder_in_past),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        color = colorGasto(),
                     )
+                }
+                if (!isNew) {
+                    TextButton(onClick = onDelete) {
+                        Text(stringResource(R.string.delete), color = colorGasto())
+                    }
                 }
             }
         },
         confirmButton = {
-            TextButton(
+            BotonPrincipal(
+                texto = stringResource(R.string.save),
                 enabled = title.isNotBlank(),
                 onClick = {
                     onSave(
@@ -111,10 +135,10 @@ fun TaskEditorDialog(initial: Task, onDismiss: () -> Unit, onSave: (Task) -> Uni
                         ),
                     )
                 },
-            ) { Text(stringResource(R.string.save)) }
+            )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            BotonSecundario(texto = stringResource(R.string.cancel), onClick = onDismiss)
         },
     )
 

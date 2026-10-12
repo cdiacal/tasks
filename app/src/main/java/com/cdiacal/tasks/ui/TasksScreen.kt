@@ -5,27 +5,28 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ClearAll
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -33,7 +34,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,22 +42,38 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.Task
+import com.cdiacal.tasks.ui.components.BotonPrincipal
+import com.cdiacal.tasks.ui.components.CabeceraHero
+import com.cdiacal.tasks.ui.components.CifraHero
+import com.cdiacal.tasks.ui.components.FilaPestanas
+import com.cdiacal.tasks.ui.components.IconoInicial
+import com.cdiacal.tasks.ui.components.MiniDatoHero
+import com.cdiacal.tasks.ui.components.TarjetaPanel
+import com.cdiacal.tasks.ui.theme.ThemeMode
+import com.cdiacal.tasks.ui.theme.colorAviso
+import com.cdiacal.tasks.ui.theme.colorGasto
+import com.cdiacal.tasks.ui.theme.colorIngreso
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -72,53 +88,67 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
     val deletedMessage = stringResource(R.string.task_deleted)
     val undoLabel = stringResource(R.string.undo)
 
+    fun deleteWithUndo(task: Task) {
+        viewModel.delete(task)
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            val result = snackbarHostState.showSnackbar(
+                message = deletedMessage,
+                actionLabel = undoLabel,
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.restore(task)
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    IconButton(onClick = viewModel::clearDone) {
-                        Icon(Icons.Default.ClearAll, contentDescription = stringResource(R.string.clear_done))
-                    }
-                },
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        floatingActionButton = {
+            BotonPrincipal(
+                texto = stringResource(R.string.add_task),
+                icono = Icons.Default.Add,
+                onClick = { editing = Task(title = "") },
+                modifier = Modifier.navigationBarsPadding(),
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { editing = Task(title = "") }) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_task))
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState, Modifier.navigationBarsPadding()) },
     ) { padding ->
-        Column(Modifier.padding(padding)) {
-            FilterRow(
-                selected = state.filter,
-                pendingCount = state.pendingCount,
-                onSelect = viewModel::setFilter,
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            Hero(
+                state = state,
+                themeMode = themeMode,
+                onThemeMode = viewModel::setThemeMode,
+                onClearDone = viewModel::clearDone,
+            )
+
+            val filters = TaskFilter.entries
+            FilaPestanas(
+                etiquetas = filters.map {
+                    when (it) {
+                        TaskFilter.PENDING -> stringResource(R.string.filter_pending)
+                        TaskFilter.DONE -> stringResource(R.string.filter_done)
+                        TaskFilter.ALL -> stringResource(R.string.filter_all)
+                    }
+                },
+                seleccionada = filters.indexOf(state.filter),
+                onSelect = { viewModel.setFilter(filters[it]) },
             )
 
             if (state.tasks.isEmpty()) {
                 EmptyState(state.filter)
             } else {
-                LazyColumn(contentPadding = PaddingValues(bottom = 88.dp)) {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 128.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     items(state.tasks, key = { it.id }) { task ->
-                        TaskRow(
+                        TaskCard(
                             task = task,
+                            todayUtcMillis = state.todayUtcMillis,
                             onToggle = { viewModel.toggleDone(task) },
                             onClick = { editing = task },
-                            onDelete = {
-                                viewModel.delete(task)
-                                scope.launch {
-                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = deletedMessage,
-                                        actionLabel = undoLabel,
-                                        duration = SnackbarDuration.Short,
-                                    )
-                                    if (result == SnackbarResult.ActionPerformed) viewModel.restore(task)
-                                }
-                            },
                         )
                     }
                 }
@@ -130,6 +160,10 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
         TaskEditorDialog(
             initial = task,
             onDismiss = { editing = null },
+            onDelete = {
+                editing = null
+                deleteWithUndo(task)
+            },
             onSave = {
                 viewModel.save(it)
                 editing = null
@@ -145,23 +179,93 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
 }
 
 @Composable
-private fun FilterRow(selected: TaskFilter, pendingCount: Int, onSelect: (TaskFilter) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        TaskFilter.entries.forEach { filter ->
-            val label = when (filter) {
-                TaskFilter.PENDING -> "${stringResource(R.string.filter_pending)} ($pendingCount)"
-                TaskFilter.DONE -> stringResource(R.string.filter_done)
-                TaskFilter.ALL -> stringResource(R.string.filter_all)
+private fun Hero(
+    state: TasksUiState,
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
+    onClearDone: () -> Unit,
+) {
+    val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
+    CabeceraHero {
+        Row(verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.app_name),
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(today, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, maxLines = 1)
             }
-            FilterChip(
-                selected = filter == selected,
-                onClick = { onSelect(filter) },
-                label = { Text(label) },
+            OptionsMenu(themeMode, onThemeMode, onClearDone)
+        }
+        Text(
+            stringResource(R.string.hero_pending_label),
+            modifier = Modifier.padding(top = 18.dp),
+            color = Color.White.copy(alpha = 0.82f),
+            fontSize = 11.5.sp,
+        )
+        CifraHero(state.stats.pending.toString())
+        Row(
+            Modifier.fillMaxWidth().padding(top = 14.dp, end = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MiniDatoHero(stringResource(R.string.stat_today), state.stats.dueToday.toString(), Modifier.weight(1f))
+            MiniDatoHero(stringResource(R.string.stat_overdue), state.stats.overdue.toString(), Modifier.weight(1f))
+            MiniDatoHero(stringResource(R.string.stat_done), state.stats.done.toString(), Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun OptionsMenu(
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
+    onClearDone: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    IconButton(onClick = { open = true }) {
+        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options), tint = Color.White)
+    }
+    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        Text(
+            stringResource(R.string.theme),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.5.sp,
+        )
+        ThemeMode.entries.forEach { mode ->
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        stringResource(
+                            when (mode) {
+                                ThemeMode.SYSTEM -> R.string.theme_system
+                                ThemeMode.LIGHT -> R.string.theme_light
+                                ThemeMode.DARK -> R.string.theme_dark
+                            },
+                        ),
+                    )
+                },
+                trailingIcon = {
+                    if (mode == themeMode) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                },
+                onClick = {
+                    onThemeMode(mode)
+                    open = false
+                },
             )
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.clear_done)) },
+            onClick = {
+                onClearDone()
+                open = false
+            },
+        )
     }
 }
 
@@ -186,32 +290,45 @@ private fun EmptyState(filter: TaskFilter) {
 }
 
 @Composable
-private fun TaskRow(task: Task, onToggle: () -> Unit, onClick: () -> Unit, onDelete: () -> Unit) {
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        leadingContent = { Checkbox(checked = task.isDone, onCheckedChange = { onToggle() }) },
-        headlineContent = {
-            Text(
-                task.title,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
-            )
-        },
-        supportingContent = {
-            val parts = listOfNotNull(
-                task.dueDate?.let { formatDate(it) },
-                task.reminderAt?.let { "🔔 ${formatReminder(it)}" },
-                task.notes.takeIf { it.isNotBlank() },
-            )
-            if (parts.isNotEmpty()) {
-                Text(parts.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun TaskCard(task: Task, todayUtcMillis: Long, onToggle: () -> Unit, onClick: () -> Unit) {
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val dueColor = when (dueState(task, todayUtcMillis)) {
+        DueState.OVERDUE -> colorGasto()
+        DueState.SOON -> colorAviso()
+        DueState.NONE -> secondary
+    }
+    TarjetaPanel(Modifier.fillMaxWidth(), onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconoInicial(inicial = task.title.take(1).uppercase(), id = task.id)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    task.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (task.isDone) secondary else MaterialTheme.colorScheme.onSurface,
+                    textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
+                )
+                task.dueDate?.let {
+                    Text(formatDate(it), fontSize = 12.sp, color = dueColor, maxLines = 1)
+                }
+                task.reminderAt?.let {
+                    Text("🔔 ${formatReminder(it)}", fontSize = 12.sp, color = secondary, maxLines = 1)
+                }
+                if (task.notes.isNotBlank()) {
+                    Text(task.notes, fontSize = 12.sp, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-        },
-        trailingContent = {
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
-            }
-        },
-    )
+            Checkbox(
+                checked = task.isDone,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = colorIngreso(),
+                    checkmarkColor = MaterialTheme.colorScheme.background,
+                    uncheckedColor = secondary,
+                ),
+            )
+        }
+    }
 }
