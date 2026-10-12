@@ -113,6 +113,6 @@ fun AppRoot(
         }
     }
     if (showSettings) SettingsScreen(tasksViewModel, onBack = { showSettings = false }, onOpenCalendar = { showCalendar = true })
-    if (showCalendar) CalendarPreviewScreen(onBack = { showCalendar = false })
+    if (showCalendar) CalendarPreviewScreen(tasksViewModel, onBack = { showCalendar = false })
     }
 }

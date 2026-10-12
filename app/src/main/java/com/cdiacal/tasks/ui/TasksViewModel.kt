@@ -219,6 +219,11 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
         repository.undoCompletion(original, steps)
     }
 
+    /** Creates several tasks at once (the calendar import). */
+    fun importTasks(tasks: List<Task>) = viewModelScope.launch {
+        tasks.forEach { repository.save(it) }
+    }
+
     fun delete(task: Task) = viewModelScope.launch { repository.delete(task) }
 
     /** Used by "undo": re-inserts the exact same task (same id). */
