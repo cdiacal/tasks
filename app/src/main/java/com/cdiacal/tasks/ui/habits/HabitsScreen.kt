@@ -24,7 +24,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -69,7 +71,7 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HabitsScreen(viewModel: HabitsViewModel = viewModel()) {
+fun HabitsScreen(viewModel: HabitsViewModel = viewModel(), onOpenSettings: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // null = dialog closed; Habit(name = "") = new habit; otherwise editing.
     var editing by remember { mutableStateOf<Habit?>(null) }
@@ -94,7 +96,7 @@ fun HabitsScreen(viewModel: HabitsViewModel = viewModel()) {
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            HabitsHero(state)
+            HabitsHero(state, onOpenSettings)
             if (state.items.isEmpty()) {
                 EmptyHabits()
             } else {
@@ -151,18 +153,25 @@ fun HabitsScreen(viewModel: HabitsViewModel = viewModel()) {
 }
 
 @Composable
-private fun HabitsHero(state: HabitsState) {
+private fun HabitsHero(state: HabitsState, onSettings: () -> Unit) {
     val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
     val context = LocalContext.current
     CabeceraHero {
         Column(Modifier.padding(end = 12.dp)) {
-            Text(
-                stringResource(R.string.habits_title),
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(today, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, maxLines = 1)
+            Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.habits_title),
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(today, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, maxLines = 1)
+                }
+                IconButton(onClick = onSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title), tint = Color.White)
+                }
+            }
             Text(
                 stringResource(R.string.habits_today_label),
                 modifier = Modifier.padding(top = 18.dp),

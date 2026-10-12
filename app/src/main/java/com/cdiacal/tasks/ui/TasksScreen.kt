@@ -5,9 +5,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,22 +15,19 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +39,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,14 +63,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
-import com.cdiacal.tasks.data.BackupData
 import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.Priority
 import com.cdiacal.tasks.data.Recurrence
 import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
-import com.cdiacal.tasks.data.allDone
 import com.cdiacal.tasks.data.TaskSort
+import com.cdiacal.tasks.data.allDone
 import com.cdiacal.tasks.data.priorityKind
 import com.cdiacal.tasks.data.recurrenceKind
 import com.cdiacal.tasks.ui.components.BotonPrincipal
@@ -81,13 +78,12 @@ import com.cdiacal.tasks.ui.components.CifraHero
 import com.cdiacal.tasks.ui.components.FilaPestanas
 import com.cdiacal.tasks.ui.components.IconoInicial
 import com.cdiacal.tasks.ui.components.MiniDatoHero
+import com.cdiacal.tasks.ui.components.Pastilla
 import com.cdiacal.tasks.ui.components.TarjetaPanel
-import com.cdiacal.tasks.ui.theme.ThemeMode
 import com.cdiacal.tasks.ui.theme.colorAviso
 import com.cdiacal.tasks.ui.theme.colorGasto
 import com.cdiacal.tasks.ui.theme.colorIngreso
 import java.text.DateFormat
-import java.time.LocalDate
 import java.util.Date
 import kotlinx.coroutines.launch
 
@@ -96,34 +92,28 @@ fun TasksScreen(
     viewModel: TasksViewModel = viewModel(),
     newTaskTrigger: Int = 0,
     onNewTaskConsumed: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    /** Lets the host hide its bottom bar while the full-screen editor is open. */
+    onEditorVisibleChange: (Boolean) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // null = dialog closed; Task(title = "") = new task; otherwise editing.
+    // null = editor closed; Task(title = "") = new task; otherwise editing.
     var editing by remember { mutableStateOf<Task?>(null) }
-    // The home-screen widget's "+" button asks the app to open the new-task dialog.
+    // The home-screen widget's "+" button asks the app to open the new-task editor.
     LaunchedEffect(newTaskTrigger) {
         if (newTaskTrigger > 0) {
             editing = Task(title = "")
             onNewTaskConsumed()
         }
     }
-    var managingCategories by remember { mutableStateOf(false) }
+    LaunchedEffect(editing != null) { onEditorVisibleChange(editing != null) }
+    DisposableEffect(Unit) { onDispose { onEditorVisibleChange(false) } }
+
     var searching by rememberSaveable { mutableStateOf(false) }
-    var showAutoBackup by remember { mutableStateOf(false) }
-    var showDigest by remember { mutableStateOf(false) }
-    val digest by viewModel.digest.collectAsStateWithLifecycle()
     val expandedIds by viewModel.expandedTaskIds.collectAsStateWithLifecycle()
-    val autoBackup by viewModel.autoBackup.collectAsStateWithLifecycle()
-    val autoBackupRunning by viewModel.autoBackupRunning.collectAsStateWithLifecycle()
-    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) viewModel.setAutoBackupFolder(uri)
-    }
-    // null = closed; Category(name = "") = new category; otherwise editing.
-    var editingCategory by remember { mutableStateOf<Category?>(null) }
     val categoriesById = remember(state.categories) { state.categories.associateBy { it.id } }
 
     val context = LocalContext.current
@@ -132,6 +122,7 @@ fun TasksScreen(
     ) { /* If denied, reminders are saved but no notification is shown. */ }
 
     val deletedMessage = stringResource(R.string.task_deleted)
+    val undoLabel = stringResource(R.string.undo)
 
     fun showMessage(text: String) {
         scope.launch {
@@ -139,43 +130,6 @@ fun TasksScreen(
             snackbarHostState.showSnackbar(text)
         }
     }
-
-    fun requestNotificationPermissionIfNeeded() {
-        val missing = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        if (missing) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    // Backups go through the system file picker, so no storage permission is needed.
-    var pendingRestore by remember { mutableStateOf<BackupData?>(null) }
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri ->
-        if (uri != null) {
-            viewModel.writeBackup(uri) { result ->
-                showMessage(
-                    result.fold(
-                        onSuccess = { context.getString(R.string.backup_saved, it) },
-                        onFailure = { context.getString(R.string.backup_save_failed) },
-                    ),
-                )
-            }
-        }
-    }
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) {
-            viewModel.readBackup(uri) { result ->
-                result.fold(
-                    onSuccess = { pendingRestore = it },
-                    onFailure = { showMessage(context.getString(R.string.backup_invalid)) },
-                )
-            }
-        }
-    }
-    val undoLabel = stringResource(R.string.undo)
 
     fun deleteWithUndo(task: Task) {
         val steps = state.subtasksByTask[task.id].orEmpty() // kept so "undo" brings them back too
@@ -191,204 +145,151 @@ fun TasksScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        floatingActionButton = {
-            BotonPrincipal(
-                texto = stringResource(R.string.add_task),
-                icono = Icons.Default.Add,
-                onClick = { editing = Task(title = "") },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            Hero(
-                state = state,
-                themeMode = themeMode,
-                onThemeMode = viewModel::setThemeMode,
-                onClearDone = viewModel::clearDone,
-                onManageCategories = { managingCategories = true },
-                onExportBackup = { exportLauncher.launch("tareas-${LocalDate.now()}.json") },
-                onImportBackup = { importLauncher.launch(arrayOf("*/*")) },
-                onSearch = { searching = true },
-                onAutoBackup = { showAutoBackup = true },
-                onDigest = { showDigest = true },
-                sort = state.sort,
-                onSort = viewModel::setSort,
-            )
-
-            if (searching) {
-                SearchBar(
-                    query = state.query,
-                    onQuery = viewModel::setQuery,
-                    onClose = {
-                        searching = false
-                        viewModel.setQuery("")
-                    },
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            floatingActionButton = {
+                BotonPrincipal(
+                    texto = stringResource(R.string.add_task),
+                    icono = Icons.Default.Add,
+                    onClick = { editing = Task(title = "") },
                 )
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { padding ->
+            Column(Modifier.padding(padding).fillMaxSize()) {
+                Hero(state = state, onSearch = { searching = true }, onSettings = onOpenSettings)
 
-            val filters = TaskFilter.entries
-            FilaPestanas(
-                etiquetas = filters.map {
-                    when (it) {
-                        TaskFilter.PENDING -> stringResource(R.string.filter_pending)
-                        TaskFilter.DONE -> stringResource(R.string.filter_done)
-                        TaskFilter.ALL -> stringResource(R.string.filter_all)
+                if (searching) {
+                    SearchBar(
+                        query = state.query,
+                        onQuery = viewModel::setQuery,
+                        onClose = {
+                            searching = false
+                            viewModel.setQuery("")
+                        },
+                    )
+                }
+
+                val filters = TaskFilter.entries
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    FilaPestanas(
+                        etiquetas = filters.map {
+                            when (it) {
+                                TaskFilter.PENDING -> stringResource(R.string.filter_pending)
+                                TaskFilter.DONE -> stringResource(R.string.filter_done)
+                                TaskFilter.ALL -> stringResource(R.string.filter_all)
+                            }
+                        },
+                        seleccionada = filters.indexOf(state.filter),
+                        onSelect = { viewModel.setFilter(filters[it]) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                    )
+                    // Always visible, one tap: switches the list between date and priority order.
+                    val byPriority = state.sort == TaskSort.PRIORITY
+                    Pastilla(
+                        texto = "↕ " + stringResource(if (byPriority) R.string.sort_priority else R.string.sort_date),
+                        activa = byPriority,
+                        onClick = { viewModel.setSort(if (byPriority) TaskSort.DATE else TaskSort.PRIORITY) },
+                        modifier = Modifier.padding(end = 16.dp),
+                    )
+                }
+
+                if (state.categories.isNotEmpty()) {
+                    val selectedIndex = state.categories.indexOfFirst { it.id == state.selectedCategoryId } + 1
+                    FilaPestanas(
+                        etiquetas = listOf(stringResource(R.string.all_categories)) + state.categories.map { c ->
+                            listOf(c.emoji, c.name).filter { it.isNotBlank() }.joinToString(" ")
+                        },
+                        seleccionada = selectedIndex,
+                        onSelect = { viewModel.setCategoryFilter(state.categories.getOrNull(it - 1)?.id) },
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                    )
+                }
+
+                if (state.tasks.isEmpty()) {
+                    EmptyState(state.filter, state.query)
+                } else {
+                    // Ordered by priority, the list gets a header per level; by date, it is one flat list.
+                    val groups = remember(state.tasks, state.sort) {
+                        if (state.sort == TaskSort.PRIORITY) {
+                            priorityGroups(state.tasks)
+                        } else {
+                            emptyList()
+                        }
                     }
-                },
-                seleccionada = filters.indexOf(state.filter),
-                onSelect = { viewModel.setFilter(filters[it]) },
-            )
-
-            if (state.categories.isNotEmpty()) {
-                val selectedIndex = state.categories.indexOfFirst { it.id == state.selectedCategoryId } + 1
-                FilaPestanas(
-                    etiquetas = listOf(stringResource(R.string.all_categories)) + state.categories.map { c ->
-                        listOf(c.emoji, c.name).filter { it.isNotBlank() }.joinToString(" ")
-                    },
-                    seleccionada = selectedIndex,
-                    onSelect = { viewModel.setCategoryFilter(state.categories.getOrNull(it - 1)?.id) },
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 12.dp),
-                )
-            }
-
-            if (state.tasks.isEmpty()) {
-                EmptyState(state.filter, state.query)
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 128.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(state.tasks, key = { it.id }) { task ->
-                        TaskCard(
-                            task = task,
-                            todayUtcMillis = state.todayUtcMillis,
-                            category = task.categoryId?.let(categoriesById::get),
-                            steps = state.subtasksByTask[task.id].orEmpty(),
-                            expanded = task.id in expandedIds,
-                            onToggleExpanded = { viewModel.toggleExpanded(task.id) },
-                            onToggleStep = { step ->
-                                viewModel.toggleStep(step) { next ->
-                                    showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
-                                }
-                            },
-                            onToggle = {
-                                viewModel.toggleDone(task) { next ->
-                                    showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
-                                }
-                            },
-                            onClick = { editing = task },
-                        )
+                    LazyColumn(
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 128.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val card: @Composable (Task) -> Unit = { task ->
+                            TaskCard(
+                                task = task,
+                                todayUtcMillis = state.todayUtcMillis,
+                                category = task.categoryId?.let(categoriesById::get),
+                                steps = state.subtasksByTask[task.id].orEmpty(),
+                                expanded = task.id in expandedIds,
+                                onToggleExpanded = { viewModel.toggleExpanded(task.id) },
+                                onToggleStep = { step ->
+                                    viewModel.toggleStep(step) { next ->
+                                        showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
+                                    }
+                                },
+                                onToggle = {
+                                    viewModel.toggleDone(task) { next ->
+                                        showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
+                                    }
+                                },
+                                onClick = { editing = task },
+                            )
+                        }
+                        if (groups.isEmpty()) {
+                            items(state.tasks, key = { it.id }) { task -> card(task) }
+                        } else {
+                            groups.forEach { group ->
+                                item(key = "header-${group.key}") { GroupHeader(group.key) }
+                                items(group.tasks, key = { it.id }) { task -> card(task) }
+                            }
+                        }
                     }
                 }
             }
         }
-    }
 
-    if (showDigest) {
-        DigestDialog(
-            config = digest,
-            onChange = { config ->
-                viewModel.setDigest(config)
-                if (config.enabled) requestNotificationPermissionIfNeeded()
-            },
-            onDismiss = { showDigest = false },
-        )
-    }
-
-    if (showAutoBackup) {
-        AutoBackupDialog(
-            state = autoBackup,
-            running = autoBackupRunning,
-            onChooseFolder = { folderPicker.launch(null) },
-            onEnabledChange = viewModel::setAutoBackupEnabled,
-            onRunNow = viewModel::autoBackupNow,
-            onDismiss = { showAutoBackup = false },
-        )
-    }
-
-    pendingRestore?.let { data ->
-        RestoreDialog(
-            data = data,
-            onDismiss = { pendingRestore = null },
-            onConfirm = {
-                pendingRestore = null
-                viewModel.restoreBackup(data) { showMessage(context.getString(R.string.backup_restored)) }
-            },
-        )
-    }
-
-    if (managingCategories) {
-        CategoryManagerDialog(
-            categories = state.categories,
-            onDismiss = { managingCategories = false },
-            onNew = { editingCategory = Category(name = "") },
-            onEdit = { editingCategory = it },
-        )
-    }
-
-    editingCategory?.let { category ->
-        CategoryEditorDialog(
-            initial = category,
-            onDismiss = { editingCategory = null },
-            onSave = {
-                viewModel.saveCategory(it)
-                editingCategory = null
-            },
-            onDelete = {
-                viewModel.deleteCategory(category)
-                editingCategory = null
-            },
-        )
-    }
-
-    editing?.let { task ->
-        TaskEditorDialog(
-            initial = task,
-            initialSteps = state.subtasksByTask[task.id].orEmpty(),
-            categories = state.categories,
-            onDismiss = { editing = null },
-            onDelete = {
-                editing = null
-                deleteWithUndo(task)
-            },
-            onSave = { saved, steps ->
-                // Complete the task only when this edit is what finished the checklist.
-                val finishedNow = steps.allDone() && !state.subtasksByTask[task.id].orEmpty().allDone()
-                viewModel.saveWithSteps(saved, steps, completeIfAllStepsDone = finishedNow) { next ->
-                    showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
-                }
-                editing = null
-                val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                    PackageManager.PERMISSION_GRANTED
-                if (saved.reminderAt != null && needsPermission) {
-                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            },
-        )
+        editing?.let { task ->
+            TaskEditorScreen(
+                initial = task,
+                initialSteps = state.subtasksByTask[task.id].orEmpty(),
+                categories = state.categories,
+                onDismiss = { editing = null },
+                onDelete = {
+                    editing = null
+                    deleteWithUndo(task)
+                },
+                onSave = { saved, steps ->
+                    // Complete the task only when this edit is what finished the checklist.
+                    val finishedNow = steps.allDone() && !state.subtasksByTask[task.id].orEmpty().allDone()
+                    viewModel.saveWithSteps(saved, steps, completeIfAllStepsDone = finishedNow) { next ->
+                        showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
+                    }
+                    editing = null
+                    val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED
+                    if (saved.reminderAt != null && needsPermission) {
+                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                },
+            )
+        }
     }
 }
 
 @Composable
-private fun Hero(
-    state: TasksUiState,
-    themeMode: ThemeMode,
-    onThemeMode: (ThemeMode) -> Unit,
-    onClearDone: () -> Unit,
-    onManageCategories: () -> Unit,
-    onExportBackup: () -> Unit,
-    onImportBackup: () -> Unit,
-    onSearch: () -> Unit,
-    onAutoBackup: () -> Unit,
-    onDigest: () -> Unit,
-    sort: TaskSort,
-    onSort: (TaskSort) -> Unit,
-) {
+private fun Hero(state: TasksUiState, onSearch: () -> Unit, onSettings: () -> Unit) {
     val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
     CabeceraHero {
         Row(verticalAlignment = Alignment.Top) {
@@ -405,18 +306,9 @@ private fun Hero(
                 IconButton(onClick = onSearch) {
                     Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search), tint = Color.White)
                 }
-                OptionsMenu(
-                    themeMode,
-                    onThemeMode,
-                    onClearDone,
-                    onManageCategories,
-                    onExportBackup,
-                    onImportBackup,
-                    onAutoBackup,
-                    onDigest,
-                    sort,
-                    onSort,
-                )
+                IconButton(onClick = onSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title), tint = Color.White)
+                }
             }
         }
         Text(
@@ -438,122 +330,22 @@ private fun Hero(
 }
 
 @Composable
-private fun OptionsMenu(
-    themeMode: ThemeMode,
-    onThemeMode: (ThemeMode) -> Unit,
-    onClearDone: () -> Unit,
-    onManageCategories: () -> Unit,
-    onExportBackup: () -> Unit,
-    onImportBackup: () -> Unit,
-    onAutoBackup: () -> Unit,
-    onDigest: () -> Unit,
-    sort: TaskSort,
-    onSort: (TaskSort) -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    IconButton(onClick = { open = true }) {
-        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options), tint = Color.White)
-    }
-    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.categories)) },
-            onClick = {
-                onManageCategories()
-                open = false
+private fun GroupHeader(key: GroupKey) {
+    Text(
+        stringResource(
+            when (key) {
+                GroupKey.HIGH -> R.string.group_high
+                GroupKey.MEDIUM -> R.string.group_medium
+                GroupKey.LOW -> R.string.group_low
+                GroupKey.NONE -> R.string.group_none
+                GroupKey.DONE -> R.string.group_done
             },
-        )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        Text(
-            stringResource(R.string.theme),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 11.5.sp,
-        )
-        ThemeMode.entries.forEach { mode ->
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        stringResource(
-                            when (mode) {
-                                ThemeMode.SYSTEM -> R.string.theme_system
-                                ThemeMode.LIGHT -> R.string.theme_light
-                                ThemeMode.DARK -> R.string.theme_dark
-                            },
-                        ),
-                    )
-                },
-                trailingIcon = {
-                    if (mode == themeMode) {
-                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    }
-                },
-                onClick = {
-                    onThemeMode(mode)
-                    open = false
-                },
-            )
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        Text(
-            stringResource(R.string.sort_title),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 11.5.sp,
-        )
-        TaskSort.entries.forEach { option ->
-            DropdownMenuItem(
-                text = {
-                    Text(stringResource(if (option == TaskSort.DATE) R.string.sort_date else R.string.sort_priority))
-                },
-                trailingIcon = {
-                    if (option == sort) {
-                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    }
-                },
-                onClick = {
-                    onSort(option)
-                    open = false
-                },
-            )
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.backup_export)) },
-            onClick = {
-                onExportBackup()
-                open = false
-            },
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.digest_menu)) },
-            onClick = {
-                onDigest()
-                open = false
-            },
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.auto_backup_title)) },
-            onClick = {
-                onAutoBackup()
-                open = false
-            },
-        )
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.backup_import)) },
-            onClick = {
-                onImportBackup()
-                open = false
-            },
-        )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.clear_done)) },
-            onClick = {
-                onClearDone()
-                open = false
-            },
-        )
-    }
+        ),
+        modifier = Modifier.padding(start = 4.dp, top = 8.dp),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -618,109 +410,92 @@ private fun TaskCard(
         DueState.SOON -> colorAviso()
         DueState.NONE -> secondary
     }
+    val checkColors = CheckboxDefaults.colors(
+        checkedColor = colorIngreso(),
+        checkmarkColor = MaterialTheme.colorScheme.background,
+        uncheckedColor = secondary,
+    )
     TarjetaPanel(Modifier.fillMaxWidth(), onClick = onClick) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            IconoInicial(
-                inicial = (category?.name ?: task.title).take(1).uppercase(),
-                id = category?.id ?: task.id,
-                emoji = category?.emoji,
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    task.title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (task.isDone) secondary else MaterialTheme.colorScheme.onSurface,
-                    textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                IconoInicial(
+                    inicial = (category?.name ?: task.title).take(1).uppercase(),
+                    id = category?.id ?: task.id,
+                    emoji = category?.emoji,
                 )
-                category?.let {
-                    Text(it.name, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
-                }
-                val priority = task.priorityKind()
-                if (priority != Priority.NONE) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        "${priorityMarker(priority)} ${priorityLabel(priority)}",
-                        fontSize = 12.sp,
-                        fontWeight = if (priority == Priority.HIGH) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (priority == Priority.LOW) secondary else MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
+                        task.title,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (task.isDone) secondary else MaterialTheme.colorScheme.onSurface,
+                        textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
                     )
-                }
-                task.dueDate?.let {
-                    Text(
-                        formatDate(it) + (repeatLabel?.let { label -> " · 🔁 $label" } ?: ""),
-                        fontSize = 12.sp,
-                        color = dueColor,
-                        maxLines = 1,
-                    )
-                }
-                if (steps.isNotEmpty()) {
-                    // Tapping the progress line folds / unfolds the checklist.
-                    Row(
-                        Modifier.clickable(onClick = onToggleExpanded),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    category?.let {
+                        Text(it.name, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                    }
+                    val priority = task.priorityKind()
+                    if (priority != Priority.NONE) {
                         Text(
-                            stringResource(R.string.steps_progress, steps.count { it.isDone }, steps.size),
+                            "${priorityMarker(priority)} ${priorityLabel(priority)}",
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = if (priority == Priority.HIGH) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (priority == Priority.LOW) secondary else MaterialTheme.colorScheme.primary,
                             maxLines = 1,
                         )
-                        Icon(
-                            if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = stringResource(if (expanded) R.string.steps_hide else R.string.steps_show),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp),
-                        )
                     }
-                }
-                task.reminderAt?.let {
-                    Text("🔔 ${formatReminder(it)}", fontSize = 12.sp, color = secondary, maxLines = 1)
-                }
-                if (task.notes.isNotBlank()) {
-                    Text(task.notes, fontSize = 12.sp, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            Checkbox(
-                checked = task.isDone,
-                onCheckedChange = { onToggle() },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = colorIngreso(),
-                    checkmarkColor = MaterialTheme.colorScheme.background,
-                    uncheckedColor = secondary,
-                ),
-            )
-        }
-        if (expanded && steps.isNotEmpty()) {
-            Column(Modifier.padding(start = 48.dp)) {
-                steps.forEach { step ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { onToggleStep(step) },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = step.isDone,
-                            onCheckedChange = { onToggleStep(step) },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = colorIngreso(),
-                                checkmarkColor = MaterialTheme.colorScheme.background,
-                                uncheckedColor = secondary,
-                            ),
-                        )
+                    task.dueDate?.let {
                         Text(
-                            step.title,
-                            modifier = Modifier.weight(1f),
-                            fontSize = 13.sp,
-                            color = if (step.isDone) secondary else MaterialTheme.colorScheme.onSurface,
-                            textDecoration = if (step.isDone) TextDecoration.LineThrough else null,
+                            formatDate(it) + (repeatLabel?.let { label -> " · 🔁 $label" } ?: ""),
+                            fontSize = 12.sp,
+                            color = dueColor,
+                            maxLines = 1,
                         )
+                    }
+                    if (steps.isNotEmpty()) {
+                        // Tapping the progress line folds / unfolds the checklist.
+                        Row(Modifier.clickable(onClick = onToggleExpanded), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.steps_progress, steps.count { it.isDone }, steps.size),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                            )
+                            Icon(
+                                if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = stringResource(if (expanded) R.string.steps_hide else R.string.steps_show),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                    task.reminderAt?.let {
+                        Text("🔔 ${formatReminder(it)}", fontSize = 12.sp, color = secondary, maxLines = 1)
+                    }
+                    if (task.notes.isNotBlank()) {
+                        Text(task.notes, fontSize = 12.sp, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                Checkbox(checked = task.isDone, onCheckedChange = { onToggle() }, colors = checkColors)
+            }
+            if (expanded && steps.isNotEmpty()) {
+                Column(Modifier.padding(start = 48.dp)) {
+                    steps.forEach { step ->
+                        Row(Modifier.fillMaxWidth().clickable { onToggleStep(step) }, verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = step.isDone, onCheckedChange = { onToggleStep(step) }, colors = checkColors)
+                            Text(
+                                step.title,
+                                modifier = Modifier.weight(1f),
+                                fontSize = 13.sp,
+                                color = if (step.isDone) secondary else MaterialTheme.colorScheme.onSurface,
+                                textDecoration = if (step.isDone) TextDecoration.LineThrough else null,
+                            )
+                        }
                     }
                 }
             }
-        }
         }
     }
 }

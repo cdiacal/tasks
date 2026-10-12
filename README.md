@@ -28,6 +28,9 @@ App Android para controlar tareas pendientes y hábitos. Todo se guarda en el pr
 - Copia de seguridad manual: exportar / restaurar un `.json` con el selector de archivos
 - Copia automática semanal a una carpeta elegida (conserva las últimas 5)
 
+**Ajustes:** una pantalla propia (engranaje de la cabecera) con apariencia, orden, categorías,
+avisos (resumen diario y estado de las notificaciones) y copias de seguridad.
+
 **Diseño:** tema claro / oscuro / sistema, azul marino sobrio (ver `ui/theme`).
 
 ## Estructura

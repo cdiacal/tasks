@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -34,6 +35,9 @@ fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigg
     // The widget's "+" must land on the Tasks tab, and be consumed once so that coming back
     // to that tab later does not reopen the dialog.
     var handledTrigger by remember { mutableIntStateOf(0) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    // The full-screen task editor covers the bottom bar so a tab switch cannot discard an edit.
+    var editorOpen by remember { mutableStateOf(false) }
     LaunchedEffect(newTaskTrigger) {
         if (newTaskTrigger > handledTrigger) tab = 0
     }
@@ -42,6 +46,7 @@ fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigg
         if (openHabitsTrigger > 0) tab = 1
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(Modifier.weight(1f)) {
             if (tab == 0) {
@@ -49,11 +54,14 @@ fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigg
                     viewModel = tasksViewModel,
                     newTaskTrigger = if (newTaskTrigger > handledTrigger) newTaskTrigger else 0,
                     onNewTaskConsumed = { handledTrigger = newTaskTrigger },
+                    onOpenSettings = { showSettings = true },
+                    onEditorVisibleChange = { editorOpen = it },
                 )
             } else {
-                HabitsScreen()
+                HabitsScreen(onOpenSettings = { showSettings = true })
             }
         }
+        if (!editorOpen) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
             val colors = NavigationBarItemDefaults.colors(
@@ -78,5 +86,8 @@ fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigg
                 colors = colors,
             )
         }
+        }
+    }
+    if (showSettings) SettingsScreen(tasksViewModel, onBack = { showSettings = false })
     }
 }
