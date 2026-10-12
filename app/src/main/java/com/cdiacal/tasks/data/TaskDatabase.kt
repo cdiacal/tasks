@@ -10,7 +10,13 @@ import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitCheck
 import com.cdiacal.tasks.habits.HabitDao
 
-@Database(entities = [Task::class, Category::class, Habit::class, HabitCheck::class], version = 5)
+// Schemas are not exported: the debug and release KSP tasks run in parallel and would race on
+// the same schema file ("Empty schema file"), and no exported schemas are kept in the repo.
+@Database(
+    entities = [Task::class, Category::class, Habit::class, HabitCheck::class],
+    version = 5,
+    exportSchema = false,
+)
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun categoryDao(): CategoryDao
