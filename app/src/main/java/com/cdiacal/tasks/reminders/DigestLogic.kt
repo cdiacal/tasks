@@ -22,8 +22,10 @@ data class Digest(
 /** [todayUtc] is today's local date as UTC midnight millis, like [Task.dueDate]. */
 fun computeDigest(tasks: List<Task>, habits: HabitsState, todayUtc: Long, maxTitles: Int = 5): Digest {
     val open = tasks.filter { !it.isDone }
-    val overdue = open.filter { dueState(it, todayUtc) == DueState.OVERDUE }.sortedBy { it.dueDate }
-    val dueToday = open.filter { it.dueDate == todayUtc }
+    // Higher priority first, then oldest first, so a cap keeps the most important titles.
+    val byImportance = compareByDescending<Task> { it.priority }.thenBy { it.dueDate }
+    val overdue = open.filter { dueState(it, todayUtc) == DueState.OVERDUE }.sortedWith(byImportance)
+    val dueToday = open.filter { it.dueDate == todayUtc }.sortedWith(byImportance)
     val titles = (overdue + dueToday).map { it.title }
     return Digest(
         dueToday = dueToday.size,

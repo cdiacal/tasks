@@ -41,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.Category
+import com.cdiacal.tasks.data.Priority
 import com.cdiacal.tasks.data.Recurrence
 import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
@@ -51,6 +52,24 @@ import com.cdiacal.tasks.ui.theme.colorGasto
 import java.text.DateFormat
 import java.util.Date
 import java.util.TimeZone
+
+@Composable
+fun priorityLabel(level: Priority): String = stringResource(
+    when (level) {
+        Priority.NONE -> R.string.priority_none
+        Priority.LOW -> R.string.priority_low
+        Priority.MEDIUM -> R.string.priority_medium
+        Priority.HIGH -> R.string.priority_high
+    },
+)
+
+/** More triangles = more important; works without relying on colour. */
+fun priorityMarker(level: Priority): String = when (level) {
+    Priority.NONE -> ""
+    Priority.LOW -> "▲"
+    Priority.MEDIUM -> "▲▲"
+    Priority.HIGH -> "▲▲▲"
+}
 
 @Composable
 fun recurrenceLabel(kind: Recurrence): String = stringResource(
@@ -84,6 +103,7 @@ fun TaskEditorDialog(
     var reminderAt by remember { mutableStateOf(initial.reminderAt) }
     var categoryId by remember { mutableStateOf(initial.categoryId) }
     var recurrence by remember { mutableStateOf(initial.recurrence) }
+    var priority by remember { mutableStateOf(initial.priority) }
     val steps = remember { mutableStateListOf<Subtask>().apply { addAll(initialSteps) } }
     var newStep by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -208,6 +228,23 @@ fun TaskEditorDialog(
                     }
                 }
                 Text(
+                    stringResource(R.string.priority),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Priority.entries.forEach { level ->
+                        Pastilla(
+                            texto = priorityLabel(level),
+                            activa = priority == level.level,
+                            onClick = { priority = level.level },
+                        )
+                    }
+                }
+                Text(
                     stringResource(R.string.steps),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -271,6 +308,7 @@ fun TaskEditorDialog(
                             reminderAt = reminderAt,
                             categoryId = categoryId,
                             recurrence = if (dueDate == null) Recurrence.NONE.name else recurrence,
+                            priority = priority,
                         ),
                         finalSteps,
                     )

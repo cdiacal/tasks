@@ -17,5 +17,7 @@ data class Task(
     val categoryId: Long? = null,
     /** A [Recurrence] name. Repeating tasks always have a due date (their anchor). */
     val recurrence: String = Recurrence.NONE.name,
+    /** A [Priority] level: 0 none, 1 low, 2 medium, 3 high. */
+    val priority: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
 )

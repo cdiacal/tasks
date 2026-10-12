@@ -11,6 +11,9 @@ import com.cdiacal.tasks.data.BackupJson
 import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.InvalidBackupException
 import com.cdiacal.tasks.data.Subtask
+import com.cdiacal.tasks.data.TaskSort
+import com.cdiacal.tasks.data.TaskSortStore
+import com.cdiacal.tasks.data.sortedFor
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.widget.createRepository
 import com.cdiacal.tasks.reminders.DigestConfig
@@ -34,6 +37,7 @@ data class TasksUiState(
     /** Category used to filter the list, or null for all. */
     val selectedCategoryId: Long? = null,
     val query: String = "",
+    val sort: TaskSort = TaskSort.DATE,
     /** Checklist steps of every task, keyed by task id. */
     val subtasksByTask: Map<Long, List<Subtask>> = emptyMap(),
     val stats: TaskStats = TaskStats(0, 0, 0, 0),
@@ -65,7 +69,7 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     val uiState: StateFlow<TasksUiState> =
-        combine(source, filter, categoryFilter, query) { src, f, categoryId, q ->
+        combine(source, filter, categoryFilter, query, TaskSortStore.flow(application)) { src, f, categoryId, q, sort ->
             val today = reminderToUtcDateMillis(System.currentTimeMillis())
             val categoryNames = src.categories.associate { it.id to it.name }
             val steps = src.subtasks.groupBy { it.taskId }
@@ -77,9 +81,10 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
                     task.categoryId?.let(categoryNames::get).orEmpty(),
                     *steps[task.id].orEmpty().map { it.title }.toTypedArray(),
                 )
-            }
+            }.sortedFor(sort)
             TasksUiState(
                 tasks = visible,
+                sort = sort,
                 query = q,
                 filter = f,
                 categories = src.categories,
@@ -135,6 +140,8 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setFilter(value: TaskFilter) = filter.update { value }
+
+    fun setSort(sort: TaskSort) = TaskSortStore.set(getApplication(), sort)
 
     fun setQuery(value: String) = query.update { value }
 

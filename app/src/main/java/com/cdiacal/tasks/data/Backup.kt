@@ -62,6 +62,7 @@ object BackupJson {
                                 .put("reminderAt", t.reminderAt ?: JSONObject.NULL)
                                 .put("categoryId", t.categoryId ?: JSONObject.NULL)
                                 .put("recurrence", t.recurrence)
+                                .put("priority", t.priority)
                                 .put("createdAt", t.createdAt),
                         )
                     }
@@ -126,6 +127,7 @@ object BackupJson {
                     reminderAt = o.longOrNull("reminderAt"),
                     categoryId = o.longOrNull("categoryId"),
                     recurrence = Recurrence.fromName(o.optString("recurrence", "")).name,
+                    priority = Priority.fromLevel(o.optInt("priority", 0)).level,
                     createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                 )
             }
