@@ -54,6 +54,9 @@
             </intent-filter>
         </receiver>
         <receiver
+            android:name=".reminders.DigestReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".reminders.ReminderReceiver"
             android:exported="false" />
         <receiver

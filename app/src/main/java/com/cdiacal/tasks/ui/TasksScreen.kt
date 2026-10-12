@@ -111,6 +111,8 @@ fun TasksScreen(
     var managingCategories by remember { mutableStateOf(false) }
     var searching by rememberSaveable { mutableStateOf(false) }
     var showAutoBackup by remember { mutableStateOf(false) }
+    var showDigest by remember { mutableStateOf(false) }
+    val digest by viewModel.digest.collectAsStateWithLifecycle()
     val expandedIds by viewModel.expandedTaskIds.collectAsStateWithLifecycle()
     val autoBackup by viewModel.autoBackup.collectAsStateWithLifecycle()
     val autoBackupRunning by viewModel.autoBackupRunning.collectAsStateWithLifecycle()
@@ -133,6 +135,13 @@ fun TasksScreen(
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(text)
         }
+    }
+
+    fun requestNotificationPermissionIfNeeded() {
+        val missing = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        if (missing) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     // Backups go through the system file picker, so no storage permission is needed.
@@ -203,6 +212,7 @@ fun TasksScreen(
                 onImportBackup = { importLauncher.launch(arrayOf("*/*")) },
                 onSearch = { searching = true },
                 onAutoBackup = { showAutoBackup = true },
+                onDigest = { showDigest = true },
             )
 
             if (searching) {
@@ -272,6 +282,17 @@ fun TasksScreen(
                 }
             }
         }
+    }
+
+    if (showDigest) {
+        DigestDialog(
+            config = digest,
+            onChange = { config ->
+                viewModel.setDigest(config)
+                if (config.enabled) requestNotificationPermissionIfNeeded()
+            },
+            onDismiss = { showDigest = false },
+        )
     }
 
     if (showAutoBackup) {
@@ -359,6 +380,7 @@ private fun Hero(
     onImportBackup: () -> Unit,
     onSearch: () -> Unit,
     onAutoBackup: () -> Unit,
+    onDigest: () -> Unit,
 ) {
     val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
     CabeceraHero {
@@ -384,6 +406,7 @@ private fun Hero(
                     onExportBackup,
                     onImportBackup,
                     onAutoBackup,
+                    onDigest,
                 )
             }
         }
@@ -414,6 +437,7 @@ private fun OptionsMenu(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onAutoBackup: () -> Unit,
+    onDigest: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     IconButton(onClick = { open = true }) {
@@ -463,6 +487,13 @@ private fun OptionsMenu(
             text = { Text(stringResource(R.string.backup_export)) },
             onClick = {
                 onExportBackup()
+                open = false
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.digest_menu)) },
+            onClick = {
+                onDigest()
                 open = false
             },
         )

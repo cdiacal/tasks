@@ -20,6 +20,7 @@ class BootReceiver : BroadcastReceiver() {
                 db.taskDao().pendingReminders(System.currentTimeMillis()).forEach(taskScheduler::sync)
                 val habitScheduler = HabitReminderScheduler(context)
                 db.habitDao().getAllHabits().forEach(habitScheduler::sync)
+                DigestScheduler(context).sync()
             } finally {
                 pending.finish()
             }

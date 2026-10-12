@@ -13,6 +13,9 @@ import com.cdiacal.tasks.data.InvalidBackupException
 import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.widget.createRepository
+import com.cdiacal.tasks.reminders.DigestConfig
+import com.cdiacal.tasks.reminders.DigestScheduler
+import com.cdiacal.tasks.reminders.DigestSettings
 import com.cdiacal.tasks.ui.theme.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -86,6 +89,15 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
                 todayUtcMillis = today,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TasksUiState())
+
+    private val _digest = MutableStateFlow(DigestSettings.load(application))
+    val digest: StateFlow<DigestConfig> = _digest
+
+    fun setDigest(config: DigestConfig) {
+        DigestSettings.save(getApplication(), config)
+        DigestScheduler(getApplication()).sync()
+        _digest.value = config
+    }
 
     private val _autoBackup = MutableStateFlow(AutoBackup.state(application))
     val autoBackup: StateFlow<AutoBackup.State> = _autoBackup

@@ -125,4 +125,25 @@
     <string name="auto_backup_error">Error: %1$s</string>
     <string name="steps_show">Mostrar pasos</string>
     <string name="steps_hide">Ocultar pasos</string>
+    <string name="task_action_done">Hecha</string>
+    <string name="task_action_snooze_hour">+1 h</string>
+    <string name="task_action_snooze_tomorrow">Mañana</string>
+    <string name="digest_menu">Resumen diario</string>
+    <string name="digest_desc">Una notificación cada día a la hora que elijas con tus tareas de hoy, las vencidas y los hábitos pendientes. Si no hay nada que contar, no avisa.</string>
+    <string name="digest_switch">Resumen diario</string>
+    <string name="digest_channel">Resumen diario</string>
+    <string name="digest_title">Tu resumen de hoy</string>
+    <string name="digest_more">… y %1$d más</string>
+    <plurals name="digest_tasks">
+        <item quantity="one">%d tarea para hoy</item>
+        <item quantity="other">%d tareas para hoy</item>
+    </plurals>
+    <plurals name="digest_overdue">
+        <item quantity="one">%d vencida</item>
+        <item quantity="other">%d vencidas</item>
+    </plurals>
+    <plurals name="digest_habits">
+        <item quantity="one">%d hábito por hacer</item>
+        <item quantity="other">%d hábitos por hacer</item>
+    </plurals>
 </resources>

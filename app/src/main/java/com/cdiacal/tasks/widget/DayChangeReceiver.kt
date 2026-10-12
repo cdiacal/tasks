@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.glance.appwidget.updateAll
+import com.cdiacal.tasks.reminders.DigestScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -20,6 +21,8 @@ class DayChangeReceiver : BroadcastReceiver() {
             try {
                 TasksWidget().updateAll(app)
                 HabitsWidget().updateAll(app)
+                // A time-zone or clock change moves "08:00": recompute the summary alarm.
+                DigestScheduler(app).sync()
             } finally {
                 pending.finish()
             }
