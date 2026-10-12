@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -75,7 +74,11 @@ import java.util.Date
 import kotlinx.coroutines.launch
 
 @Composable
-fun TasksScreen(viewModel: TasksViewModel = viewModel(), newTaskTrigger: Int = 0) {
+fun TasksScreen(
+    viewModel: TasksViewModel = viewModel(),
+    newTaskTrigger: Int = 0,
+    onNewTaskConsumed: () -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -85,7 +88,10 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel(), newTaskTrigger: Int = 0
     var editing by remember { mutableStateOf<Task?>(null) }
     // The home-screen widget's "+" button asks the app to open the new-task dialog.
     LaunchedEffect(newTaskTrigger) {
-        if (newTaskTrigger > 0) editing = Task(title = "")
+        if (newTaskTrigger > 0) {
+            editing = Task(title = "")
+            onNewTaskConsumed()
+        }
     }
     var managingCategories by remember { mutableStateOf(false) }
     // null = closed; Category(name = "") = new category; otherwise editing.
@@ -158,10 +164,9 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel(), newTaskTrigger: Int = 0
                 texto = stringResource(R.string.add_task),
                 icono = Icons.Default.Add,
                 onClick = { editing = Task(title = "") },
-                modifier = Modifier.navigationBarsPadding(),
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState, Modifier.navigationBarsPadding()) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Hero(

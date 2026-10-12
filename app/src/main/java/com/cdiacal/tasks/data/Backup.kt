@@ -1,10 +1,21 @@
 package com.cdiacal.tasks.data
 
+import com.cdiacal.tasks.habits.ALL_DAYS
+import com.cdiacal.tasks.habits.Habit
+import com.cdiacal.tasks.habits.HabitCheck
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-data class BackupData(val categories: List<Category>, val tasks: List<Task>)
+/**
+ * [habits] is null when the file predates habits: restoring then leaves current habits untouched.
+ */
+data class BackupData(
+    val categories: List<Category>,
+    val tasks: List<Task>,
+    val habits: List<Habit>? = null,
+    val habitChecks: List<HabitCheck> = emptyList(),
+)
 
 /** The file is not a readable Tareas backup (wrong app, newer version, or malformed). */
 class InvalidBackupException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -14,7 +25,13 @@ object BackupJson {
     private const val APP = "tareas"
     private const val VERSION = 1
 
-    fun encode(tasks: List<Task>, categories: List<Category>, exportedAt: Long): String {
+    fun encode(
+        tasks: List<Task>,
+        categories: List<Category>,
+        exportedAt: Long,
+        habits: List<Habit> = emptyList(),
+        habitChecks: List<HabitCheck> = emptyList(),
+    ): String {
         val root = JSONObject()
             .put("app", APP)
             .put("version", VERSION)
@@ -46,6 +63,27 @@ object BackupJson {
                     }
                 },
             )
+            .put(
+                "habits",
+                JSONArray().apply {
+                    habits.forEach { h ->
+                        put(
+                            JSONObject()
+                                .put("id", h.id)
+                                .put("name", h.name)
+                                .put("emoji", h.emoji)
+                                .put("daysMask", h.daysMask)
+                                .put("createdAt", h.createdAt),
+                        )
+                    }
+                },
+            )
+            .put(
+                "habitChecks",
+                JSONArray().apply {
+                    habitChecks.forEach { c -> put(JSONObject().put("habitId", c.habitId).put("epochDay", c.epochDay)) }
+                },
+            )
         return root.toString(2)
     }
 
@@ -70,7 +108,23 @@ object BackupJson {
                     createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                 )
             }
-            return BackupData(categories, tasks)
+            val habits = if (root.has("habits")) {
+                root.optJSONArray("habits").objects().map { o ->
+                    Habit(
+                        id = o.getLong("id"),
+                        name = o.getString("name"),
+                        emoji = o.optString("emoji", ""),
+                        daysMask = o.optInt("daysMask", ALL_DAYS),
+                        createdAt = o.optLong("createdAt", System.currentTimeMillis()),
+                    )
+                }
+            } else {
+                null
+            }
+            val checks = root.optJSONArray("habitChecks").objects().map { o ->
+                HabitCheck(habitId = o.getLong("habitId"), epochDay = o.getLong("epochDay"))
+            }
+            return BackupData(categories, tasks, habits, checks)
         } catch (e: JSONException) {
             throw InvalidBackupException("Malformed backup", e)
         }

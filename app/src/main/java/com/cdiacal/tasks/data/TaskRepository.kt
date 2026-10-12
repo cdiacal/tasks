@@ -12,6 +12,7 @@ class TaskRepository(
 ) {
     private val dao = db.taskDao()
     private val categoryDao = db.categoryDao()
+    private val habitDao = db.habitDao()
 
     val tasks: Flow<List<Task>> = dao.observeAll()
     val categories: Flow<List<Category>> = categoryDao.observeAll()
@@ -38,7 +39,14 @@ class TaskRepository(
     /** Serializes everything to the backup JSON; returns the text and how many tasks it holds. */
     suspend fun exportBackup(): Pair<String, Int> {
         val tasks = dao.getAll()
-        return BackupJson.encode(tasks, categoryDao.getAll(), System.currentTimeMillis()) to tasks.size
+        val json = BackupJson.encode(
+            tasks = tasks,
+            categories = categoryDao.getAll(),
+            exportedAt = System.currentTimeMillis(),
+            habits = habitDao.getAllHabits(),
+            habitChecks = habitDao.getAllChecks(),
+        )
+        return json to tasks.size
     }
 
     /** Replaces ALL current tasks and categories with the backup's, then rebuilds reminders. */
@@ -49,6 +57,13 @@ class TaskRepository(
             categoryDao.deleteAll()
             categoryDao.insertAll(data.categories)
             dao.insertAll(data.tasks)
+            // Old backups have no habits section: keep the current habits in that case.
+            data.habits?.let { habits ->
+                habitDao.deleteAllChecks()
+                habitDao.deleteAllHabits()
+                habitDao.insertHabits(habits)
+                habitDao.insertChecks(data.habitChecks)
+            }
         }
         previous.forEach { reminders.cancel(it.id) }
         data.tasks.forEach(reminders::sync)

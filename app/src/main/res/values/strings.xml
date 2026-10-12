@@ -59,4 +59,25 @@
     <string name="backup_restore_message">Se reemplazarán todas tus tareas y categorías actuales por las de la copia: %1$d tareas y %2$d categorías. Esta acción no se puede deshacer.</string>
     <string name="backup_restore_confirm">Restaurar</string>
     <string name="backup_restored">Copia restaurada</string>
+    <string name="tab_tasks">Tareas</string>
+    <string name="tab_habits">Hábitos</string>
+    <string name="habits_title">Hábitos</string>
+    <string name="habits_today_label">Completados hoy</string>
+    <string name="habit_stat_streak">Mejor racha activa</string>
+    <string name="habit_stat_week">Esta semana</string>
+    <string name="habit_stat_total">Hábitos</string>
+    <string name="habits_empty">Aún no tienes hábitos. Pulsa «Nuevo hábito» para crear el primero: beber agua, leer, hacer ejercicio…</string>
+    <string name="new_habit">Nuevo hábito</string>
+    <string name="edit_habit">Editar hábito</string>
+    <string name="habit_name">Nombre del hábito</string>
+    <string name="habit_days">Días en los que lo haces</string>
+    <string name="delete_habit_hint">Al eliminarlo se borra también todo su historial.</string>
+    <string name="habit_streak_current">🔥 %1$s · mejor: %2$s</string>
+    <string name="habit_streak_best">Mejor racha: %1$s</string>
+    <string name="habit_no_streak">Sin racha todavía</string>
+    <string name="backup_restore_habits">También se reemplazarán tus %1$d hábitos y su historial.</string>
+    <plurals name="habit_days">
+        <item quantity="one">%d día</item>
+        <item quantity="other">%d días</item>
+    </plurals>
 </resources>

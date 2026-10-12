@@ -13,7 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.cdiacal.tasks.ui.TasksScreen
+import com.cdiacal.tasks.ui.AppRoot
 import com.cdiacal.tasks.ui.TasksViewModel
 import com.cdiacal.tasks.ui.theme.LocalEsModoOscuro
 import com.cdiacal.tasks.ui.theme.TasksTheme
@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
                     )
                     onDispose {}
                 }
-                TasksScreen(viewModel, newTaskTrigger)
+                AppRoot(viewModel, newTaskTrigger)
             }
         }
     }

@@ -4,6 +4,8 @@ import com.cdiacal.tasks.data.BackupJson
 import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.InvalidBackupException
 import com.cdiacal.tasks.data.Task
+import com.cdiacal.tasks.habits.Habit
+import com.cdiacal.tasks.habits.HabitCheck
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -19,6 +21,19 @@ class BackupJsonTest {
         val data = BackupJson.decode(BackupJson.encode(tasks, categories, exportedAt = 99))
         assertEquals(categories, data.categories)
         assertEquals(tasks, data.tasks)
+    }
+
+    @Test fun habitsAndChecksRoundTrip() {
+        val habits = listOf(Habit(id = 5, name = "Leer", emoji = "📚", daysMask = 0b0011111, createdAt = 123))
+        val checks = listOf(HabitCheck(5, 20_000), HabitCheck(5, 20_001))
+        val data = BackupJson.decode(BackupJson.encode(tasks, categories, 0, habits, checks))
+        assertEquals(habits, data.habits)
+        assertEquals(checks, data.habitChecks)
+    }
+
+    @Test fun backupWithoutHabitsSectionDecodesToNull() {
+        val json = """{"app":"tareas","version":1,"tasks":[],"categories":[]}"""
+        assertNull(BackupJson.decode(json).habits)
     }
 
     @Test fun nullFieldsStayNull() {
