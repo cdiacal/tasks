@@ -11,6 +11,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,23 +26,41 @@ jobs:
       - name: Unit tests
         run: ./gradlew test
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Decode signing key
+        if: env.KEYSTORE_B64 != ''
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/tareas.p12"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/tareas.p12" >> "$GITHUB_ENV"
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk tareas-debug.apk
+      - name: Build APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            ./gradlew assembleRelease
+            cp app/build/outputs/apk/release/app-release.apk tareas.apk
+          else
+            echo "::warning::No signing key configured; building a debug-signed APK."
+            ./gradlew assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk tareas.apk
+          fi
+
+      - name: Show signing certificate
+        run: |
+          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apksigner"
+          "$APKSIGNER" verify --print-certs tareas.apk | grep -i "certificate"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: tareas-debug-apk
-          path: tareas-debug.apk
+          name: tareas-apk
+          path: tareas.apk
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "apk-${{ github.run_number }}" tareas-debug.apk \
+          gh release create "apk-${{ github.run_number }}" tareas.apk \
             --prerelease \
             --target "${{ github.sha }}" \
-            --title "APK de prueba #${{ github.run_number }}" \
-            --notes "Build debug de la rama ${{ github.ref_name }} (${{ github.sha }})"
+            --title "APK #${{ github.run_number }}" \
+            --notes "Build de la rama ${{ github.ref_name }} (${{ github.sha }}). Firma: ${KEYSTORE_B64:+release}${KEYSTORE_B64:-debug}"

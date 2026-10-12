@@ -17,13 +17,25 @@ android {
         versionName = "0.1.0"
     }
 
+    // The release key is never stored in the repo: CI injects it through environment variables.
+    // Without them (local builds) the release type falls back to the debug key.
+    val releaseKeystore = System.getenv("KEYSTORE_FILE")
+    signingConfigs {
+        create("release") {
+            if (releaseKeystore != null) {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = "tareas"
+                keyPassword = System.getenv("KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
+            // Not minified: obfuscated code is a common antivirus heuristic trigger.
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
         }
     }
 
