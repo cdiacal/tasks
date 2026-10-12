@@ -44,6 +44,11 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     private val categoryFilter = MutableStateFlow<Long?>(null)
     private val query = MutableStateFlow("")
 
+    private val expanded = MutableStateFlow<Set<Long>>(emptySet())
+
+    /** Tasks whose steps are unfolded in the list (kept here so it survives tab changes). */
+    val expandedTaskIds: StateFlow<Set<Long>> = expanded
+
     private val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
     private val _themeMode = MutableStateFlow(
         ThemeMode.entries.firstOrNull { it.name == prefs.getString(KEY_THEME, null) } ?: ThemeMode.SYSTEM,
@@ -164,6 +169,10 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun save(task: Task) = viewModelScope.launch { repository.save(task) }
+
+    fun toggleExpanded(taskId: Long) = expanded.update { if (taskId in it) it - taskId else it + taskId }
+
+    fun toggleStep(step: Subtask) = viewModelScope.launch { repository.toggleStep(step.id) }
 
     fun saveWithSteps(task: Task, steps: List<Subtask>) =
         viewModelScope.launch { repository.saveWithSubtasks(task, steps) }

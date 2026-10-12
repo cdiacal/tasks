@@ -17,6 +17,12 @@ interface SubtaskDao {
     @Query("DELETE FROM subtasks WHERE taskId = :taskId")
     suspend fun deleteForTask(taskId: Long)
 
+    @Query("SELECT * FROM subtasks WHERE id = :id")
+    suspend fun getById(id: Long): Subtask?
+
+    @Query("UPDATE subtasks SET isDone = :done WHERE id = :id")
+    suspend fun setDone(id: Long, done: Boolean)
+
     /** A repeating task starts its steps over each time it comes round again. */
     @Query("UPDATE subtasks SET isDone = 0 WHERE taskId = :taskId")
     suspend fun uncheckAll(taskId: Long)

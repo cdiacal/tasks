@@ -41,6 +41,13 @@ class TaskRepository(
         onTasksChanged()
     }
 
+    /** Ticks or unticks one step of a checklist. */
+    suspend fun toggleStep(stepId: Long) {
+        val step = subtaskDao.getById(stepId) ?: return
+        subtaskDao.setDone(stepId, !step.isDone)
+        onTasksChanged()
+    }
+
     /**
      * Completes an open task or reopens a done one. A repeating task is rescheduled instead of
      * closed (and its steps start over); the new due date is returned so the UI can say so.

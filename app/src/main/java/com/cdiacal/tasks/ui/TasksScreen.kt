@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
@@ -106,6 +110,7 @@ fun TasksScreen(
     var managingCategories by remember { mutableStateOf(false) }
     var searching by rememberSaveable { mutableStateOf(false) }
     var showAutoBackup by remember { mutableStateOf(false) }
+    val expandedIds by viewModel.expandedTaskIds.collectAsStateWithLifecycle()
     val autoBackup by viewModel.autoBackup.collectAsStateWithLifecycle()
     val autoBackupRunning by viewModel.autoBackupRunning.collectAsStateWithLifecycle()
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -248,6 +253,9 @@ fun TasksScreen(
                             todayUtcMillis = state.todayUtcMillis,
                             category = task.categoryId?.let(categoriesById::get),
                             steps = state.subtasksByTask[task.id].orEmpty(),
+                            expanded = task.id in expandedIds,
+                            onToggleExpanded = { viewModel.toggleExpanded(task.id) },
+                            onToggleStep = viewModel::toggleStep,
                             onToggle = {
                                 viewModel.toggleDone(task) { next ->
                                     showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
@@ -522,6 +530,9 @@ private fun TaskCard(
     todayUtcMillis: Long,
     category: Category?,
     steps: List<Subtask>,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    onToggleStep: (Subtask) -> Unit,
     onToggle: () -> Unit,
     onClick: () -> Unit,
 ) {
@@ -534,6 +545,7 @@ private fun TaskCard(
         DueState.NONE -> secondary
     }
     TarjetaPanel(Modifier.fillMaxWidth(), onClick = onClick) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconoInicial(
                 inicial = (category?.name ?: task.title).take(1).uppercase(),
@@ -562,12 +574,24 @@ private fun TaskCard(
                     )
                 }
                 if (steps.isNotEmpty()) {
-                    Text(
-                        stringResource(R.string.steps_progress, steps.count { it.isDone }, steps.size),
-                        fontSize = 12.sp,
-                        color = secondary,
-                        maxLines = 1,
-                    )
+                    // Tapping the progress line folds / unfolds the checklist.
+                    Row(
+                        Modifier.clickable(onClick = onToggleExpanded),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.steps_progress, steps.count { it.isDone }, steps.size),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                        )
+                        Icon(
+                            if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = stringResource(if (expanded) R.string.steps_hide else R.string.steps_show),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
                 task.reminderAt?.let {
                     Text("🔔 ${formatReminder(it)}", fontSize = 12.sp, color = secondary, maxLines = 1)
@@ -585,6 +609,34 @@ private fun TaskCard(
                     uncheckedColor = secondary,
                 ),
             )
+        }
+        if (expanded && steps.isNotEmpty()) {
+            Column(Modifier.padding(start = 48.dp)) {
+                steps.forEach { step ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onToggleStep(step) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = step.isDone,
+                            onCheckedChange = { onToggleStep(step) },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = colorIngreso(),
+                                checkmarkColor = MaterialTheme.colorScheme.background,
+                                uncheckedColor = secondary,
+                            ),
+                        )
+                        Text(
+                            step.title,
+                            modifier = Modifier.weight(1f),
+                            fontSize = 13.sp,
+                            color = if (step.isDone) secondary else MaterialTheme.colorScheme.onSurface,
+                            textDecoration = if (step.isDone) TextDecoration.LineThrough else null,
+                        )
+                    }
+                }
+            }
+        }
         }
     }
 }

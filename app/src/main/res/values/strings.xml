@@ -123,4 +123,6 @@
     <string name="auto_backup_last">Última copia: %1$s</string>
     <string name="auto_backup_never">Todavía no se ha hecho ninguna copia</string>
     <string name="auto_backup_error">Error: %1$s</string>
+    <string name="steps_show">Mostrar pasos</string>
+    <string name="steps_hide">Ocultar pasos</string>
 </resources>
