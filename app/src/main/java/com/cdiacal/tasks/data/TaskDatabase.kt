@@ -10,7 +10,7 @@ import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitCheck
 import com.cdiacal.tasks.habits.HabitDao
 
-@Database(entities = [Task::class, Category::class, Habit::class, HabitCheck::class], version = 4)
+@Database(entities = [Task::class, Category::class, Habit::class, HabitCheck::class], version = 5)
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
     abstract fun categoryDao(): CategoryDao
@@ -54,6 +54,12 @@ abstract class TaskDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN reminderMinutes INTEGER")
+            }
+        }
+
         @Volatile private var instance: TaskDatabase? = null
 
         fun get(context: Context): TaskDatabase =
@@ -62,7 +68,7 @@ abstract class TaskDatabase : RoomDatabase() {
                     context.applicationContext,
                     TaskDatabase::class.java,
                     "tasks.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build().also { instance = it }
             }
     }
 }

@@ -24,7 +24,7 @@ class BackupJsonTest {
     }
 
     @Test fun habitsAndChecksRoundTrip() {
-        val habits = listOf(Habit(id = 5, name = "Leer", emoji = "📚", daysMask = 0b0011111, createdAt = 123))
+        val habits = listOf(Habit(id = 5, name = "Leer", emoji = "📚", daysMask = 0b0011111, createdAt = 123, reminderMinutes = 540))
         val checks = listOf(HabitCheck(5, 20_000), HabitCheck(5, 20_001))
         val data = BackupJson.decode(BackupJson.encode(tasks, categories, 0, habits, checks))
         assertEquals(habits, data.habits)
@@ -34,6 +34,12 @@ class BackupJsonTest {
     @Test fun backupWithoutHabitsSectionDecodesToNull() {
         val json = """{"app":"tareas","version":1,"tasks":[],"categories":[]}"""
         assertNull(BackupJson.decode(json).habits)
+    }
+
+    @Test fun habitWithoutReminderKeepsItNull() {
+        val habit = Habit(id = 6, name = "Agua", createdAt = 5)
+        val data = BackupJson.decode(BackupJson.encode(tasks, categories, 0, listOf(habit), emptyList()))
+        assertNull(data.habits!!.single().reminderMinutes)
     }
 
     @Test fun nullFieldsStayNull() {

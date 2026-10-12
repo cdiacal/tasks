@@ -80,4 +80,8 @@
         <item quantity="one">%d día</item>
         <item quantity="other">%d días</item>
     </plurals>
+    <string name="habit_daily_reminder">Recordatorio diario</string>
+    <string name="habit_reminders_channel">Recordatorios de hábitos</string>
+    <string name="habit_reminder_text">Es hora de tu hábito de hoy</string>
+    <string name="habit_done_action">Hecho</string>
 </resources>

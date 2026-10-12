@@ -73,7 +73,8 @@ object BackupJson {
                                 .put("name", h.name)
                                 .put("emoji", h.emoji)
                                 .put("daysMask", h.daysMask)
-                                .put("createdAt", h.createdAt),
+                                .put("createdAt", h.createdAt)
+                                .put("reminderMinutes", h.reminderMinutes ?: JSONObject.NULL),
                         )
                     }
                 },
@@ -116,6 +117,7 @@ object BackupJson {
                         emoji = o.optString("emoji", ""),
                         daysMask = o.optInt("daysMask", ALL_DAYS),
                         createdAt = o.optLong("createdAt", System.currentTimeMillis()),
+                        reminderMinutes = o.longOrNull("reminderMinutes")?.toInt(),
                     )
                 }
             } else {

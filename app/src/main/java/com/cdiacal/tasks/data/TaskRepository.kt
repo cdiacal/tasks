@@ -1,12 +1,14 @@
 package com.cdiacal.tasks.data
 
 import androidx.room.withTransaction
+import com.cdiacal.tasks.reminders.HabitReminderScheduler
 import com.cdiacal.tasks.reminders.ReminderScheduler
 import kotlinx.coroutines.flow.Flow
 
 class TaskRepository(
     private val db: TaskDatabase,
     private val reminders: ReminderScheduler,
+    private val habitReminders: HabitReminderScheduler,
     /** Called after any change to tasks (used to refresh the home-screen widget). */
     private val onTasksChanged: suspend () -> Unit = {},
 ) {
@@ -52,6 +54,7 @@ class TaskRepository(
     /** Replaces ALL current tasks and categories with the backup's, then rebuilds reminders. */
     suspend fun restoreBackup(data: BackupData) {
         val previous = dao.getAll()
+        val previousHabits = habitDao.getAllHabits()
         db.withTransaction {
             dao.deleteAll()
             categoryDao.deleteAll()
@@ -67,6 +70,10 @@ class TaskRepository(
         }
         previous.forEach { reminders.cancel(it.id) }
         data.tasks.forEach(reminders::sync)
+        if (data.habits != null) {
+            previousHabits.forEach { habitReminders.cancel(it.id) }
+            data.habits.forEach(habitReminders::sync)
+        }
         onTasksChanged()
     }
 

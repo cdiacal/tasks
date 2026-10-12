@@ -8,6 +8,7 @@ import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitRepository
 import com.cdiacal.tasks.habits.HabitsState
 import com.cdiacal.tasks.habits.buildHabitsState
+import com.cdiacal.tasks.reminders.HabitReminderScheduler
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class HabitsViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = HabitRepository(TaskDatabase.get(application))
+    private val repository = HabitRepository(TaskDatabase.get(application), HabitReminderScheduler(application))
 
     /** Today's local epoch day, re-checked every minute so the panel rolls over at midnight. */
     private val today = flow {

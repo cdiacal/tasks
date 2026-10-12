@@ -13,6 +13,8 @@ data class Habit(
     val emoji: String = "",
     val daysMask: Int = ALL_DAYS,
     val createdAt: Long = System.currentTimeMillis(),
+    /** Daily reminder time as minutes after local midnight, or null for no reminder. */
+    val reminderMinutes: Int? = null,
 )
 
 /** One row per (habit, day) that was completed. Days are local epoch days. */

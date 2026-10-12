@@ -24,9 +24,12 @@ class MainActivity : ComponentActivity() {
     /** Incremented each time the widget asks to create a new task. */
     private var newTaskTrigger by mutableIntStateOf(0)
 
+    /** Incremented each time a habit notification asks to show the Habits tab. */
+    private var openHabitsTrigger by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null && intent.getBooleanExtra(EXTRA_NEW_TASK, false)) newTaskTrigger++
+        if (savedInstanceState == null) handleIntent(intent)
         setContent {
             val mode by viewModel.themeMode.collectAsStateWithLifecycle()
             TasksTheme(mode) {
@@ -44,17 +47,23 @@ class MainActivity : ComponentActivity() {
                     )
                     onDispose {}
                 }
-                AppRoot(viewModel, newTaskTrigger)
+                AppRoot(viewModel, newTaskTrigger, openHabitsTrigger)
             }
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent) {
         if (intent.getBooleanExtra(EXTRA_NEW_TASK, false)) newTaskTrigger++
+        if (intent.getBooleanExtra(EXTRA_OPEN_HABITS, false)) openHabitsTrigger++
     }
 
     companion object {
         const val EXTRA_NEW_TASK = "new_task"
+        const val EXTRA_OPEN_HABITS = "open_habits"
     }
 }

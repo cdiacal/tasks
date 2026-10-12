@@ -1,5 +1,10 @@
 package com.cdiacal.tasks.ui.habits
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
@@ -47,6 +53,7 @@ import com.cdiacal.tasks.habits.DayCell
 import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitItem
 import com.cdiacal.tasks.habits.HabitsState
+import com.cdiacal.tasks.habits.formatMinutes
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.CabeceraHero
 import com.cdiacal.tasks.ui.components.CifraHero
@@ -66,6 +73,11 @@ fun HabitsScreen(viewModel: HabitsViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // null = dialog closed; Habit(name = "") = new habit; otherwise editing.
     var editing by remember { mutableStateOf<Habit?>(null) }
+
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* If denied, reminders are saved but no notification is shown. */ }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -107,6 +119,12 @@ fun HabitsScreen(viewModel: HabitsViewModel = viewModel()) {
             onSave = {
                 viewModel.save(it)
                 editing = null
+                val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
+                if (it.reminderMinutes != null && needsPermission) {
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             },
             onDelete = {
                 viewModel.delete(habit)
@@ -197,6 +215,9 @@ private fun HabitCard(item: HabitItem, onToggle: (Long) -> Unit, onClick: () -> 
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(subtitle, fontSize = 12.sp, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    item.habit.reminderMinutes?.let {
+                        Text("⏰ ${formatMinutes(it)}", fontSize = 12.sp, color = secondary, maxLines = 1)
+                    }
                 }
                 DayCheck(cell = todayCell, size = 36.dp, onClick = { onToggle(todayCell.epochDay) })
             }

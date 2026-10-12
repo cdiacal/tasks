@@ -29,13 +29,17 @@ import com.cdiacal.tasks.ui.habits.HabitsScreen
 
 /** Two top-level sections (Tasks / Habits) switched with a flat bottom bar. */
 @Composable
-fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int) {
+fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigger: Int = 0) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     // The widget's "+" must land on the Tasks tab, and be consumed once so that coming back
     // to that tab later does not reopen the dialog.
     var handledTrigger by remember { mutableIntStateOf(0) }
     LaunchedEffect(newTaskTrigger) {
         if (newTaskTrigger > handledTrigger) tab = 0
+    }
+
+    LaunchedEffect(openHabitsTrigger) {
+        if (openHabitsTrigger > 0) tab = 1
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {

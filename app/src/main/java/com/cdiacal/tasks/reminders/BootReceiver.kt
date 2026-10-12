@@ -8,17 +8,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/** Alarms are wiped on reboot, so re-create them for every pending future reminder. */
+/** Alarms are wiped on reboot (and may be after an update): re-create every pending reminder. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val scheduler = ReminderScheduler(context)
-                TaskDatabase.get(context).taskDao()
-                    .pendingReminders(System.currentTimeMillis())
-                    .forEach(scheduler::sync)
+                val db = TaskDatabase.get(context)
+                val taskScheduler = ReminderScheduler(context)
+                db.taskDao().pendingReminders(System.currentTimeMillis()).forEach(taskScheduler::sync)
+                val habitScheduler = HabitReminderScheduler(context)
+                db.habitDao().getAllHabits().forEach(habitScheduler::sync)
             } finally {
                 pending.finish()
             }
