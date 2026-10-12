@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.data.TaskDatabase
 import com.cdiacal.tasks.data.TaskRepository
@@ -20,6 +21,9 @@ import kotlinx.coroutines.launch
 data class TasksUiState(
     val tasks: List<Task> = emptyList(),
     val filter: TaskFilter = TaskFilter.PENDING,
+    val categories: List<Category> = emptyList(),
+    /** Category used to filter the list, or null for all. */
+    val selectedCategoryId: Long? = null,
     val stats: TaskStats = TaskStats(0, 0, 0, 0),
     /** Today's local date as UTC midnight millis (same unit as [Task.dueDate]). */
     val todayUtcMillis: Long = 0,
@@ -27,10 +31,11 @@ data class TasksUiState(
 
 class TasksViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = TaskRepository(
-        TaskDatabase.get(application).taskDao(),
+        TaskDatabase.get(application),
         ReminderScheduler(application),
     )
     private val filter = MutableStateFlow(TaskFilter.PENDING)
+    private val categoryFilter = MutableStateFlow<Long?>(null)
 
     private val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
     private val _themeMode = MutableStateFlow(
@@ -39,11 +44,13 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     val themeMode: StateFlow<ThemeMode> = _themeMode
 
     val uiState: StateFlow<TasksUiState> =
-        combine(repository.tasks, filter) { all, f ->
+        combine(repository.tasks, filter, categoryFilter, repository.categories) { all, f, categoryId, categories ->
             val today = reminderToUtcDateMillis(System.currentTimeMillis())
             TasksUiState(
-                tasks = f.apply(all),
+                tasks = f.apply(all).inCategory(categoryId),
                 filter = f,
+                categories = categories,
+                selectedCategoryId = categoryId,
                 stats = computeStats(all, today),
                 todayUtcMillis = today,
             )
@@ -55,6 +62,15 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setFilter(value: TaskFilter) = filter.update { value }
+
+    fun setCategoryFilter(id: Long?) = categoryFilter.update { id }
+
+    fun saveCategory(category: Category) = viewModelScope.launch { repository.saveCategory(category) }
+
+    fun deleteCategory(category: Category) = viewModelScope.launch {
+        repository.deleteCategory(category)
+        if (categoryFilter.value == category.id) categoryFilter.value = null
+    }
 
     fun save(task: Task) = viewModelScope.launch { repository.save(task) }
 

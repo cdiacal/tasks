@@ -13,5 +13,7 @@ data class Task(
     val dueDate: Long? = null,
     /** Reminder moment as epoch millis (absolute instant), or null when there is none. */
     val reminderAt: Long? = null,
+    /** Id of the [Category] this task belongs to, or null for none. */
+    val categoryId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

@@ -35,4 +35,15 @@
     <string name="theme_system">Sistema</string>
     <string name="theme_light">Claro</string>
     <string name="theme_dark">Oscuro</string>
+    <string name="category">Categoría</string>
+    <string name="categories">Categorías</string>
+    <string name="no_category">Ninguna</string>
+    <string name="all_categories">Todas las categorías</string>
+    <string name="new_category">Nueva categoría</string>
+    <string name="edit_category">Editar categoría</string>
+    <string name="category_name">Nombre</string>
+    <string name="category_emoji">Emoji (opcional)</string>
+    <string name="no_categories_yet">Aún no tienes categorías. Crea una para organizar tus tareas.</string>
+    <string name="delete_category_hint">Las tareas de esta categoría no se borran: pasarán a «Ninguna».</string>
+    <string name="close">Cerrar</string>
 </resources>

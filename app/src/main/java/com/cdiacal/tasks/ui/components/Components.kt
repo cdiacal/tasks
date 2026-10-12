@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -120,6 +121,26 @@ fun BotonSecundario(
     }
 }
 
+/** Single pill: active = primary fill, inactive = surfaceVariant fill. */
+@Composable
+fun Pastilla(texto: String, activa: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(100))
+            .background(if (activa) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(
+            texto,
+            fontSize = 12.sp,
+            fontWeight = if (activa) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (activa) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
 /** Horizontally scrollable pill tabs. */
 @Composable
 fun FilaPestanas(
@@ -127,38 +148,31 @@ fun FilaPestanas(
     seleccionada: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(contentPadding),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         etiquetas.forEachIndexed { index, etiqueta ->
-            val activa = index == seleccionada
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(100))
-                    .background(if (activa) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable(role = Role.Tab) { onSelect(index) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    etiqueta,
-                    fontSize = 12.sp,
-                    fontWeight = if (activa) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (activa) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
+            Pastilla(etiqueta, activa = index == seleccionada, onClick = { onSelect(index) })
         }
     }
 }
 
-/** Rounded-square tile with the title's initial; tone chosen by id % 8. */
+/** Rounded-square tile with an emoji (or the initial); tone chosen by id % 8. */
 @Composable
-fun IconoInicial(inicial: String, id: Long, modifier: Modifier = Modifier, tamano: Int = 36) {
+fun IconoInicial(
+    inicial: String,
+    id: Long,
+    modifier: Modifier = Modifier,
+    tamano: Int = 36,
+    emoji: String? = null,
+) {
+    val emojiVisible = emoji?.takeIf { it.isNotBlank() }
     Box(
         modifier = modifier
             .size(tamano.dp)
@@ -166,12 +180,16 @@ fun IconoInicial(inicial: String, id: Long, modifier: Modifier = Modifier, taman
             .background(colorFondoIcono(id)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            inicial,
-            fontSize = (tamano * 0.38f).sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        if (emojiVisible != null) {
+            Text(emojiVisible, fontSize = (tamano * 0.4f).sp, maxLines = 1)
+        } else {
+            Text(
+                inicial,
+                fontSize = (tamano * 0.38f).sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
     }
 }
 

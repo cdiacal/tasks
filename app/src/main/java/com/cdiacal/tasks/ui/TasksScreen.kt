@@ -54,6 +54,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
+import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.CabeceraHero
@@ -79,6 +80,10 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
 
     // null = dialog closed; Task(title = "") = new task; otherwise editing.
     var editing by remember { mutableStateOf<Task?>(null) }
+    var managingCategories by remember { mutableStateOf(false) }
+    // null = closed; Category(name = "") = new category; otherwise editing.
+    var editingCategory by remember { mutableStateOf<Category?>(null) }
+    val categoriesById = remember(state.categories) { state.categories.associateBy { it.id } }
 
     val context = LocalContext.current
     val notificationPermission = rememberLauncherForActivityResult(
@@ -121,6 +126,7 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
                 themeMode = themeMode,
                 onThemeMode = viewModel::setThemeMode,
                 onClearDone = viewModel::clearDone,
+                onManageCategories = { managingCategories = true },
             )
 
             val filters = TaskFilter.entries
@@ -136,6 +142,18 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
                 onSelect = { viewModel.setFilter(filters[it]) },
             )
 
+            if (state.categories.isNotEmpty()) {
+                val selectedIndex = state.categories.indexOfFirst { it.id == state.selectedCategoryId } + 1
+                FilaPestanas(
+                    etiquetas = listOf(stringResource(R.string.all_categories)) + state.categories.map { c ->
+                        listOf(c.emoji, c.name).filter { it.isNotBlank() }.joinToString(" ")
+                    },
+                    seleccionada = selectedIndex,
+                    onSelect = { viewModel.setCategoryFilter(state.categories.getOrNull(it - 1)?.id) },
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                )
+            }
+
             if (state.tasks.isEmpty()) {
                 EmptyState(state.filter)
             } else {
@@ -147,6 +165,7 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
                         TaskCard(
                             task = task,
                             todayUtcMillis = state.todayUtcMillis,
+                            category = task.categoryId?.let(categoriesById::get),
                             onToggle = { viewModel.toggleDone(task) },
                             onClick = { editing = task },
                         )
@@ -156,9 +175,34 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
         }
     }
 
+    if (managingCategories) {
+        CategoryManagerDialog(
+            categories = state.categories,
+            onDismiss = { managingCategories = false },
+            onNew = { editingCategory = Category(name = "") },
+            onEdit = { editingCategory = it },
+        )
+    }
+
+    editingCategory?.let { category ->
+        CategoryEditorDialog(
+            initial = category,
+            onDismiss = { editingCategory = null },
+            onSave = {
+                viewModel.saveCategory(it)
+                editingCategory = null
+            },
+            onDelete = {
+                viewModel.deleteCategory(category)
+                editingCategory = null
+            },
+        )
+    }
+
     editing?.let { task ->
         TaskEditorDialog(
             initial = task,
+            categories = state.categories,
             onDismiss = { editing = null },
             onDelete = {
                 editing = null
@@ -184,6 +228,7 @@ private fun Hero(
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
     onClearDone: () -> Unit,
+    onManageCategories: () -> Unit,
 ) {
     val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
     CabeceraHero {
@@ -197,7 +242,7 @@ private fun Hero(
                 )
                 Text(today, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, maxLines = 1)
             }
-            OptionsMenu(themeMode, onThemeMode, onClearDone)
+            OptionsMenu(themeMode, onThemeMode, onClearDone, onManageCategories)
         }
         Text(
             stringResource(R.string.hero_pending_label),
@@ -222,12 +267,21 @@ private fun OptionsMenu(
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
     onClearDone: () -> Unit,
+    onManageCategories: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     IconButton(onClick = { open = true }) {
         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options), tint = Color.White)
     }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.categories)) },
+            onClick = {
+                onManageCategories()
+                open = false
+            },
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         Text(
             stringResource(R.string.theme),
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -290,7 +344,7 @@ private fun EmptyState(filter: TaskFilter) {
 }
 
 @Composable
-private fun TaskCard(task: Task, todayUtcMillis: Long, onToggle: () -> Unit, onClick: () -> Unit) {
+private fun TaskCard(task: Task, todayUtcMillis: Long, category: Category?, onToggle: () -> Unit, onClick: () -> Unit) {
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     val dueColor = when (dueState(task, todayUtcMillis)) {
         DueState.OVERDUE -> colorGasto()
@@ -299,7 +353,11 @@ private fun TaskCard(task: Task, todayUtcMillis: Long, onToggle: () -> Unit, onC
     }
     TarjetaPanel(Modifier.fillMaxWidth(), onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            IconoInicial(inicial = task.title.take(1).uppercase(), id = task.id)
+            IconoInicial(
+                inicial = (category?.name ?: task.title).take(1).uppercase(),
+                id = category?.id ?: task.id,
+                emoji = category?.emoji,
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     task.title,
@@ -310,6 +368,9 @@ private fun TaskCard(task: Task, todayUtcMillis: Long, onToggle: () -> Unit, onC
                     color = if (task.isDone) secondary else MaterialTheme.colorScheme.onSurface,
                     textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
                 )
+                category?.let {
+                    Text(it.name, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                }
                 task.dueDate?.let {
                     Text(formatDate(it), fontSize = 12.sp, color = dueColor, maxLines = 1)
                 }

@@ -1,9 +1,12 @@
 package com.cdiacal.tasks.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -25,9 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.cdiacal.tasks.R
+import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.BotonSecundario
+import com.cdiacal.tasks.ui.components.Pastilla
 import com.cdiacal.tasks.ui.theme.colorGasto
 import java.text.DateFormat
 import java.util.Date
@@ -42,6 +47,7 @@ fun formatDate(utcMillis: Long): String =
 @Composable
 fun TaskEditorDialog(
     initial: Task,
+    categories: List<Category>,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
     onSave: (Task) -> Unit,
@@ -50,6 +56,7 @@ fun TaskEditorDialog(
     var notes by remember { mutableStateOf(initial.notes) }
     var dueDate by remember { mutableStateOf(initial.dueDate) }
     var reminderAt by remember { mutableStateOf(initial.reminderAt) }
+    var categoryId by remember { mutableStateOf(initial.categoryId) }
     var showDatePicker by remember { mutableStateOf(false) }
     // Reminder is picked in two steps: date first, then time. Holds the chosen date meanwhile.
     var pendingReminderDate by remember { mutableStateOf<Long?>(null) }
@@ -61,7 +68,10 @@ fun TaskEditorDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(if (isNew) R.string.add_task else R.string.edit_task)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -114,6 +124,26 @@ fun TaskEditorDialog(
                         color = colorGasto(),
                     )
                 }
+                if (categories.isNotEmpty()) {
+                    Text(
+                        stringResource(R.string.category),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Pastilla(stringResource(R.string.no_category), categoryId == null, { categoryId = null })
+                        categories.forEach { c ->
+                            Pastilla(
+                                texto = listOf(c.emoji, c.name).filter { it.isNotBlank() }.joinToString(" "),
+                                activa = categoryId == c.id,
+                                onClick = { categoryId = c.id },
+                            )
+                        }
+                    }
+                }
                 if (!isNew) {
                     TextButton(onClick = onDelete) {
                         Text(stringResource(R.string.delete), color = colorGasto())
@@ -132,6 +162,7 @@ fun TaskEditorDialog(
                             notes = notes.trim(),
                             dueDate = dueDate,
                             reminderAt = reminderAt,
+                            categoryId = categoryId,
                         ),
                     )
                 },

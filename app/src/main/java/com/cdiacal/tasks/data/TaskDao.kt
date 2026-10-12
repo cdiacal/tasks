@@ -27,6 +27,9 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE isDone = 0 AND reminderAt IS NOT NULL AND reminderAt > :now")
     suspend fun pendingReminders(now: Long): List<Task>
 
+    @Query("UPDATE tasks SET categoryId = NULL WHERE categoryId = :categoryId")
+    suspend fun clearCategory(categoryId: Long)
+
     @Delete
     suspend fun delete(task: Task)
 
