@@ -75,5 +75,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
+    // Real org.json for JVM unit tests (the android.jar one is a stub that throws).
+    testImplementation(libs.orgjson)
     testImplementation(libs.kotlinx.coroutines.test)
 }

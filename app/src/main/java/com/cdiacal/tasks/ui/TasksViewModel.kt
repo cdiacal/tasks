@@ -2,12 +2,17 @@ package com.cdiacal.tasks.ui
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.cdiacal.tasks.data.BackupData
+import com.cdiacal.tasks.data.BackupJson
 import com.cdiacal.tasks.data.Category
+import com.cdiacal.tasks.data.InvalidBackupException
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.widget.createRepository
 import com.cdiacal.tasks.ui.theme.ThemeMode
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class TasksUiState(
     val tasks: List<Task> = emptyList(),
@@ -58,6 +64,39 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setFilter(value: TaskFilter) = filter.update { value }
 
+    /** Writes the backup JSON to [uri] (a document the user picked). Reports the task count. */
+    fun writeBackup(uri: Uri, onResult: (Result<Int>) -> Unit) = viewModelScope.launch {
+        val result = runCatching {
+            val (json, count) = repository.exportBackup()
+            withContext(Dispatchers.IO) {
+                val out = getApplication<Application>().contentResolver.openOutputStream(uri, "wt")
+                    ?: error("Cannot open $uri")
+                out.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+            }
+            count
+        }
+        onResult(result)
+    }
+
+    /** Reads and validates a backup file without applying it. */
+    fun readBackup(uri: Uri, onResult: (Result<BackupData>) -> Unit) = viewModelScope.launch {
+        val result = runCatching {
+            withContext(Dispatchers.IO) {
+                val bytes = getApplication<Application>().contentResolver.openInputStream(uri)
+                    ?.use { it.readBytes() } ?: error("Cannot open $uri")
+                if (bytes.size > MAX_BACKUP_BYTES) throw InvalidBackupException("Backup too large")
+                BackupJson.decode(String(bytes, Charsets.UTF_8))
+            }
+        }
+        onResult(result)
+    }
+
+    fun restoreBackup(data: BackupData, onDone: () -> Unit) = viewModelScope.launch {
+        repository.restoreBackup(data)
+        categoryFilter.value = null // the selected category may not exist in the backup
+        onDone()
+    }
+
     fun setCategoryFilter(id: Long?) = categoryFilter.update { id }
 
     fun saveCategory(category: Category) = viewModelScope.launch { repository.saveCategory(category) }
@@ -80,5 +119,6 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
 
     private companion object {
         const val KEY_THEME = "theme_mode"
+        const val MAX_BACKUP_BYTES = 10 * 1024 * 1024
     }
 }

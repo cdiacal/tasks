@@ -50,4 +50,13 @@
     <string name="widget_description">Tus tareas pendientes en la pantalla de inicio</string>
     <string name="widget_pending_count">%1$d pendientes</string>
     <string name="widget_all_done">¡Todo al día!</string>
+    <string name="backup_export">Exportar copia de seguridad</string>
+    <string name="backup_import">Restaurar copia de seguridad</string>
+    <string name="backup_saved">Copia guardada: %1$d tareas</string>
+    <string name="backup_save_failed">No se pudo guardar la copia</string>
+    <string name="backup_invalid">El archivo no es una copia válida de Tareas</string>
+    <string name="backup_restore_title">Restaurar copia</string>
+    <string name="backup_restore_message">Se reemplazarán todas tus tareas y categorías actuales por las de la copia: %1$d tareas y %2$d categorías. Esta acción no se puede deshacer.</string>
+    <string name="backup_restore_confirm">Restaurar</string>
+    <string name="backup_restored">Copia restaurada</string>
 </resources>

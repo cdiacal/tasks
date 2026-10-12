@@ -21,6 +21,15 @@ interface TaskDao {
     )
     fun observeAll(): Flow<List<Task>>
 
+    @Query("SELECT * FROM tasks")
+    suspend fun getAll(): List<Task>
+
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAll()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(tasks: List<Task>)
+
     @Query("SELECT * FROM tasks WHERE id = :id")
     suspend fun getById(id: Long): Task?
 

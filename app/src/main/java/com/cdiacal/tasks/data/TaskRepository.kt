@@ -35,6 +35,26 @@ class TaskRepository(
         onTasksChanged()
     }
 
+    /** Serializes everything to the backup JSON; returns the text and how many tasks it holds. */
+    suspend fun exportBackup(): Pair<String, Int> {
+        val tasks = dao.getAll()
+        return BackupJson.encode(tasks, categoryDao.getAll(), System.currentTimeMillis()) to tasks.size
+    }
+
+    /** Replaces ALL current tasks and categories with the backup's, then rebuilds reminders. */
+    suspend fun restoreBackup(data: BackupData) {
+        val previous = dao.getAll()
+        db.withTransaction {
+            dao.deleteAll()
+            categoryDao.deleteAll()
+            categoryDao.insertAll(data.categories)
+            dao.insertAll(data.tasks)
+        }
+        previous.forEach { reminders.cancel(it.id) }
+        data.tasks.forEach(reminders::sync)
+        onTasksChanged()
+    }
+
     suspend fun saveCategory(category: Category) {
         categoryDao.upsert(category)
     }

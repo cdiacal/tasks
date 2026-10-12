@@ -55,6 +55,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
+import com.cdiacal.tasks.data.BackupData
 import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.ui.components.BotonPrincipal
@@ -69,6 +70,7 @@ import com.cdiacal.tasks.ui.theme.colorAviso
 import com.cdiacal.tasks.ui.theme.colorGasto
 import com.cdiacal.tasks.ui.theme.colorIngreso
 import java.text.DateFormat
+import java.time.LocalDate
 import java.util.Date
 import kotlinx.coroutines.launch
 
@@ -96,6 +98,42 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel(), newTaskTrigger: Int = 0
     ) { /* If denied, reminders are saved but no notification is shown. */ }
 
     val deletedMessage = stringResource(R.string.task_deleted)
+
+    fun showMessage(text: String) {
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar(text)
+        }
+    }
+
+    // Backups go through the system file picker, so no storage permission is needed.
+    var pendingRestore by remember { mutableStateOf<BackupData?>(null) }
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) {
+            viewModel.writeBackup(uri) { result ->
+                showMessage(
+                    result.fold(
+                        onSuccess = { context.getString(R.string.backup_saved, it) },
+                        onFailure = { context.getString(R.string.backup_save_failed) },
+                    ),
+                )
+            }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            viewModel.readBackup(uri) { result ->
+                result.fold(
+                    onSuccess = { pendingRestore = it },
+                    onFailure = { showMessage(context.getString(R.string.backup_invalid)) },
+                )
+            }
+        }
+    }
     val undoLabel = stringResource(R.string.undo)
 
     fun deleteWithUndo(task: Task) {
@@ -132,6 +170,8 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel(), newTaskTrigger: Int = 0
                 onThemeMode = viewModel::setThemeMode,
                 onClearDone = viewModel::clearDone,
                 onManageCategories = { managingCategories = true },
+                onExportBackup = { exportLauncher.launch("tareas-${LocalDate.now()}.json") },
+                onImportBackup = { importLauncher.launch(arrayOf("*/*")) },
             )
 
             val filters = TaskFilter.entries
@@ -178,6 +218,17 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel(), newTaskTrigger: Int = 0
                 }
             }
         }
+    }
+
+    pendingRestore?.let { data ->
+        RestoreDialog(
+            data = data,
+            onDismiss = { pendingRestore = null },
+            onConfirm = {
+                pendingRestore = null
+                viewModel.restoreBackup(data) { showMessage(context.getString(R.string.backup_restored)) }
+            },
+        )
     }
 
     if (managingCategories) {
@@ -234,6 +285,8 @@ private fun Hero(
     onThemeMode: (ThemeMode) -> Unit,
     onClearDone: () -> Unit,
     onManageCategories: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
 ) {
     val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
     CabeceraHero {
@@ -247,7 +300,7 @@ private fun Hero(
                 )
                 Text(today, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, maxLines = 1)
             }
-            OptionsMenu(themeMode, onThemeMode, onClearDone, onManageCategories)
+            OptionsMenu(themeMode, onThemeMode, onClearDone, onManageCategories, onExportBackup, onImportBackup)
         }
         Text(
             stringResource(R.string.hero_pending_label),
@@ -273,6 +326,8 @@ private fun OptionsMenu(
     onThemeMode: (ThemeMode) -> Unit,
     onClearDone: () -> Unit,
     onManageCategories: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     IconButton(onClick = { open = true }) {
@@ -317,6 +372,21 @@ private fun OptionsMenu(
                 },
             )
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.backup_export)) },
+            onClick = {
+                onExportBackup()
+                open = false
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.backup_import)) },
+            onClick = {
+                onImportBackup()
+                open = false
+            },
+        )
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         DropdownMenuItem(
             text = { Text(stringResource(R.string.clear_done)) },
