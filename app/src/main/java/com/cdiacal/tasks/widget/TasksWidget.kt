@@ -47,10 +47,10 @@ import com.cdiacal.tasks.ui.formatDate
 import com.cdiacal.tasks.ui.reminderToUtcDateMillis
 
 // Widgets can't use the app theme, so the design system defines fixed colors for them.
-private val TextWhite = ColorProvider(Color(0xFFFFFFFF))
-private val TextDim = ColorProvider(Color(0xFFD2DCEC))
-private val Green = ColorProvider(Color(0xFF5FD9A0))
-private val Red = ColorProvider(Color(0xFFF0857A))
+internal val TextWhite = ColorProvider(Color(0xFFFFFFFF))
+internal val TextDim = ColorProvider(Color(0xFFD2DCEC))
+internal val Green = ColorProvider(Color(0xFF5FD9A0))
+internal val Red = ColorProvider(Color(0xFFF0857A))
 
 private val TaskIdKey = ActionParameters.Key<Long>("task_id")
 

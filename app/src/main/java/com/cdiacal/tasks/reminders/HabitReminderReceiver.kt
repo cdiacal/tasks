@@ -13,6 +13,8 @@ import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.TaskDatabase
 import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitCheck
+import com.cdiacal.tasks.widget.HabitsWidget
+import androidx.glance.appwidget.updateAll
 import java.time.LocalDate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +36,7 @@ class HabitReminderReceiver : BroadcastReceiver() {
                 if (intent.action == ACTION_DONE) {
                     dao.insertCheck(HabitCheck(habitId, today))
                     NotificationManagerCompat.from(context).cancel(notificationId(habitId))
+                    HabitsWidget().updateAll(context)
                 } else {
                     // A deleted habit has nothing to remind about and is not rescheduled.
                     val habit = dao.getHabit(habitId) ?: return@launch

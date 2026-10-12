@@ -90,4 +90,10 @@
     <string name="habit_month_summary">Este mes: %1$d de %2$d días (%3$d%%)</string>
     <string name="habit_month_empty">Este mes no hay días que contar todavía.</string>
     <string name="habit_detail_edit">Editar</string>
+    <string name="widget_habits_name">Hábitos de hoy</string>
+    <string name="widget_habits_description">Marca tus hábitos de hoy desde la pantalla de inicio</string>
+    <string name="widget_habits_progress">%1$d/%2$d hoy</string>
+    <string name="widget_habits_nothing">Nada para hoy</string>
+    <string name="widget_habits_empty">Aún no tienes hábitos.\nCréalos en la app.</string>
+    <string name="widget_habits_none_today">Hoy no toca ningún hábito</string>
 </resources>
