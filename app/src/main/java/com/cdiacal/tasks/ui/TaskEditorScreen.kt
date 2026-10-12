@@ -146,7 +146,7 @@ fun TaskEditorScreen(
     var showReminderDate by remember { mutableStateOf(false) }
 
     val todayUtc = remember { reminderToUtcDateMillis(System.currentTimeMillis()) }
-    val isNew = initial.id == 0L && initial.title.isEmpty()
+    val isNew = initial.id == 0L
     val titleFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (isNew) titleFocus.requestFocus() }
 

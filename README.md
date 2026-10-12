@@ -16,6 +16,8 @@ App Android para controlar tareas pendientes y hábitos. Todo se guarda en el pr
 - Pasos (subtareas) con progreso en la tarjeta
 - Búsqueda por título, notas, categoría y pasos (sin distinguir mayúsculas ni tildes)
 - Filtros por estado y por categoría; categorías con emoji
+- «Deshacer» al completar (también las repetitivas) o eliminar una tarea
+- «Compartir → Tareas» desde cualquier app crea una tarea con el texto compartido
 
 **Hábitos**
 - Días de la semana en que se hace, racha actual y mejor racha, vista de 7 días

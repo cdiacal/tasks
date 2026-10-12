@@ -81,6 +81,21 @@ class TaskRepository(
         return updated.dueDate
     }
 
+    /**
+     * Takes back a completion: puts [original] (the task as it was before) and its steps back and
+     * drops the completion from the log. Works for repeating tasks, which had moved to a new date.
+     */
+    suspend fun undoCompletion(original: Task, steps: List<Subtask>) {
+        db.withTransaction {
+            dao.upsert(original)
+            subtaskDao.deleteForTask(original.id)
+            subtaskDao.insertAll(steps.map { it.copy(id = 0, taskId = original.id) })
+            completionDao.deleteLatestFor(original.id)
+        }
+        reminders.sync(original)
+        onTasksChanged()
+    }
+
     suspend fun delete(task: Task) {
         db.withTransaction {
             subtaskDao.deleteForTask(task.id)

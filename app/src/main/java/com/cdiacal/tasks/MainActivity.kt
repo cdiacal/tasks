@@ -11,10 +11,13 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.ui.AppRoot
 import com.cdiacal.tasks.ui.TasksViewModel
+import com.cdiacal.tasks.ui.sharedTextToDraft
 import com.cdiacal.tasks.ui.theme.LocalEsModoOscuro
 import com.cdiacal.tasks.ui.theme.TasksTheme
 
@@ -23,6 +26,9 @@ class MainActivity : ComponentActivity() {
 
     /** Incremented each time the widget asks to create a new task. */
     private var newTaskTrigger by mutableIntStateOf(0)
+
+    /** Text shared from another app, to prefill the next new task (null for a plain new task). */
+    private var sharedDraft by mutableStateOf<Task?>(null)
 
     /** Incremented each time a habit notification asks to show the Habits tab. */
     private var openHabitsTrigger by mutableIntStateOf(0)
@@ -47,7 +53,7 @@ class MainActivity : ComponentActivity() {
                     )
                     onDispose {}
                 }
-                AppRoot(viewModel, newTaskTrigger, openHabitsTrigger)
+                AppRoot(viewModel, newTaskTrigger, openHabitsTrigger, sharedDraft)
             }
         }
     }
@@ -58,7 +64,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        if (intent.getBooleanExtra(EXTRA_NEW_TASK, false)) newTaskTrigger++
+        if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
+            val draft = sharedTextToDraft(
+                subject = intent.getStringExtra(Intent.EXTRA_SUBJECT),
+                text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString(),
+            )
+            if (draft != null) {
+                sharedDraft = draft
+                newTaskTrigger++
+            }
+        } else if (intent.getBooleanExtra(EXTRA_NEW_TASK, false)) {
+            sharedDraft = null
+            newTaskTrigger++
+        }
         if (intent.getBooleanExtra(EXTRA_OPEN_HABITS, false)) openHabitsTrigger++
     }
 

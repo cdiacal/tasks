@@ -18,6 +18,7 @@
     <string name="empty_done">Aún no has completado ninguna tarea.</string>
     <string name="empty_all">No hay tareas. Pulsa + para añadir una.</string>
     <string name="task_deleted">Tarea eliminada</string>
+    <string name="task_completed">Tarea completada</string>
     <string name="undo">Deshacer</string>
     <string name="reminder">Recordatorio</string>
     <string name="no_reminder">Quitar</string>

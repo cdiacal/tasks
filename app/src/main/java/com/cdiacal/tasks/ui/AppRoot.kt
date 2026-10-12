@@ -27,11 +27,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.cdiacal.tasks.R
+import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.ui.habits.HabitsScreen
 
 /** Two top-level sections (Tasks / Habits) switched with a flat bottom bar. */
 @Composable
-fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigger: Int = 0) {
+fun AppRoot(
+    tasksViewModel: TasksViewModel,
+    newTaskTrigger: Int,
+    openHabitsTrigger: Int = 0,
+    sharedDraft: Task? = null,
+) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     // The widget's "+" must land on the Tasks tab, and be consumed once so that coming back
     // to that tab later does not reopen the dialog.
@@ -54,6 +60,7 @@ fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigg
                 TasksScreen(
                     viewModel = tasksViewModel,
                     newTaskTrigger = if (newTaskTrigger > handledTrigger) newTaskTrigger else 0,
+                    sharedDraft = sharedDraft,
                     onNewTaskConsumed = { handledTrigger = newTaskTrigger },
                     onOpenSettings = { showSettings = true },
                     onEditorVisibleChange = { editorOpen = it },

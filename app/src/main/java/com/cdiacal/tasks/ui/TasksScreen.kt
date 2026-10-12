@@ -92,6 +92,7 @@ import kotlinx.coroutines.launch
 fun TasksScreen(
     viewModel: TasksViewModel = viewModel(),
     newTaskTrigger: Int = 0,
+    sharedDraft: Task? = null,
     onNewTaskConsumed: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     /** Lets the host hide its bottom bar while the full-screen editor is open. */
@@ -106,7 +107,7 @@ fun TasksScreen(
     // The home-screen widget's "+" button asks the app to open the new-task editor.
     LaunchedEffect(newTaskTrigger) {
         if (newTaskTrigger > 0) {
-            editing = Task(title = "")
+            editing = sharedDraft ?: Task(title = "")
             onNewTaskConsumed()
         }
     }
@@ -123,12 +124,33 @@ fun TasksScreen(
     ) { /* If denied, reminders are saved but no notification is shown. */ }
 
     val deletedMessage = stringResource(R.string.task_deleted)
+    val completedMessage = stringResource(R.string.task_completed)
     val undoLabel = stringResource(R.string.undo)
 
     fun showMessage(text: String) {
         scope.launch {
             snackbarHostState.currentSnackbarData?.dismiss()
             snackbarHostState.showSnackbar(text)
+        }
+    }
+
+    fun completeWithUndo(task: Task) {
+        if (task.isDone) {
+            viewModel.toggleDone(task) // reopening needs no undo
+            return
+        }
+        val steps = state.subtasksByTask[task.id].orEmpty()
+        viewModel.complete(task) { next ->
+            val message = if (next == null) completedMessage else context.getString(R.string.task_repeats_next, formatDate(next))
+            scope.launch {
+                snackbarHostState.currentSnackbarData?.dismiss()
+                val result = snackbarHostState.showSnackbar(
+                    message = message,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
+                if (result == SnackbarResult.ActionPerformed) viewModel.undoCompletion(task, steps)
+            }
         }
     }
 
@@ -239,11 +261,7 @@ fun TasksScreen(
                                         showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
                                     }
                                 },
-                                onToggle = {
-                                    viewModel.toggleDone(task) { next ->
-                                        showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
-                                    }
-                                },
+                                onToggle = { completeWithUndo(task) },
                                 onClick = { editing = task },
                             )
                         }

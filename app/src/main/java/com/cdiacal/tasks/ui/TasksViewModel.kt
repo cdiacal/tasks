@@ -210,6 +210,15 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
         repository.toggleDone(task)?.let(onRescheduled)
     }
 
+    /** Completes an open task; [onDone] gets the next due date of a repeating task, else null. */
+    fun complete(task: Task, onDone: (Long?) -> Unit) = viewModelScope.launch {
+        onDone(repository.toggleDone(task))
+    }
+
+    fun undoCompletion(original: Task, steps: List<Subtask>) = viewModelScope.launch {
+        repository.undoCompletion(original, steps)
+    }
+
     fun delete(task: Task) = viewModelScope.launch { repository.delete(task) }
 
     /** Used by "undo": re-inserts the exact same task (same id). */
