@@ -10,7 +10,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.util.SortedMap
 import java.util.TreeMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,7 +46,7 @@ fun groupByDay(
     from: LocalDate,
     days: Int,
     zone: ZoneId = ZoneId.systemDefault(),
-): SortedMap<LocalDate, List<CalendarEvent>> {
+): Map<LocalDate, List<CalendarEvent>> {
     val lastDay = from.plusDays(days - 1L)
     val result = TreeMap<LocalDate, MutableList<CalendarEvent>>()
     for (event in events) {
