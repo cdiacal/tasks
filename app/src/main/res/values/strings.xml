@@ -84,4 +84,10 @@
     <string name="habit_reminders_channel">Recordatorios de hábitos</string>
     <string name="habit_reminder_text">Es hora de tu hábito de hoy</string>
     <string name="habit_done_action">Hecho</string>
+    <string name="stat_current_streak">Racha actual</string>
+    <string name="stat_best_streak">Mejor racha</string>
+    <string name="stat_total_done">Total hecho</string>
+    <string name="habit_month_summary">Este mes: %1$d de %2$d días (%3$d%%)</string>
+    <string name="habit_month_empty">Este mes no hay días que contar todavía.</string>
+    <string name="habit_detail_edit">Editar</string>
 </resources>

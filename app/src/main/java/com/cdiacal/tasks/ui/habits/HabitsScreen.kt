@@ -73,6 +73,8 @@ fun HabitsScreen(viewModel: HabitsViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // null = dialog closed; Habit(name = "") = new habit; otherwise editing.
     var editing by remember { mutableStateOf<Habit?>(null) }
+    // Habit whose history calendar is open; looked up live so toggling updates it instantly.
+    var detailId by remember { mutableStateOf<Long?>(null) }
 
     val context = LocalContext.current
     val notificationPermission = rememberLauncherForActivityResult(
@@ -104,12 +106,26 @@ fun HabitsScreen(viewModel: HabitsViewModel = viewModel()) {
                         HabitCard(
                             item = item,
                             onToggle = { day -> viewModel.toggle(item.habit.id, day) },
-                            onClick = { editing = item.habit },
+                            onClick = { detailId = item.habit.id },
                         )
                     }
                 }
             }
         }
+    }
+
+    val detailItem = detailId?.let { id -> state.items.firstOrNull { it.habit.id == id } }
+    if (detailItem != null) {
+        HabitDetailDialog(
+            item = detailItem,
+            today = state.today,
+            onToggle = { day -> viewModel.toggle(detailItem.habit.id, day) },
+            onEdit = {
+                detailId = null
+                editing = detailItem.habit
+            },
+            onDismiss = { detailId = null },
+        )
     }
 
     editing?.let { habit ->

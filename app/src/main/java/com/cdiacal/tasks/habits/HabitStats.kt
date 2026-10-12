@@ -2,6 +2,7 @@ package com.cdiacal.tasks.habits
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 
 /** 0 = Monday .. 6 = Sunday. */
@@ -48,6 +49,50 @@ fun weekProgress(mask: Int, done: Set<Long>, startDay: Long, today: Long): Pair<
     return completed to scheduled
 }
 
+data class MonthDay(
+    val epochDay: Long,
+    val dayOfMonth: Int,
+    val scheduled: Boolean,
+    val done: Boolean,
+    val isToday: Boolean,
+    val isFuture: Boolean,
+)
+
+/**
+ * One calendar month of a habit's history. [leadingBlanks] empty cells precede day 1 (weeks
+ * start on Monday). [completed] / [scheduledSoFar] count only scheduled days from the habit's
+ * first day up to today, so the percentage never penalizes days before it existed or still ahead.
+ */
+data class MonthGrid(
+    val month: YearMonth,
+    val leadingBlanks: Int,
+    val days: List<MonthDay>,
+    val completed: Int,
+    val scheduledSoFar: Int,
+) {
+    val percent: Int get() = if (scheduledSoFar == 0) 0 else Math.round(100f * completed / scheduledSoFar)
+}
+
+fun buildMonthGrid(month: YearMonth, mask: Int, done: Set<Long>, startDay: Long, today: Long): MonthGrid {
+    val from = firstDay(startDay, done)
+    var completed = 0
+    var scheduledSoFar = 0
+    val days = (1..month.lengthOfMonth()).map { dayOfMonth ->
+        val day = month.atDay(dayOfMonth).toEpochDay()
+        val scheduled = isScheduled(mask, day)
+        val isDone = day in done
+        if (scheduled && day in from..today) {
+            scheduledSoFar++
+            if (isDone) completed++
+        }
+        MonthDay(day, dayOfMonth, scheduled, isDone, isToday = day == today, isFuture = day > today)
+    }
+    return MonthGrid(month, month.atDay(1).dayOfWeek.value - 1, days, completed, scheduledSoFar)
+}
+
+/** The earliest day with any history for the habit: its creation day or its earliest tick. */
+fun historyStart(startDay: Long, done: Set<Long>): Long = firstDay(startDay, done)
+
 data class DayCell(val epochDay: Long, val scheduled: Boolean, val done: Boolean, val isToday: Boolean)
 
 data class HabitItem(
@@ -57,6 +102,9 @@ data class HabitItem(
     val week: List<DayCell>,
     val scheduledToday: Boolean,
     val doneToday: Boolean,
+    /** Every completed day (local epoch days) and the habit's creation day, for the calendar. */
+    val doneDays: Set<Long>,
+    val startDay: Long,
 )
 
 data class HabitsState(
@@ -67,6 +115,8 @@ data class HabitsState(
     val weekScheduled: Int = 0,
     /** Longest *current* streak among all habits. */
     val bestCurrentStreak: Int = 0,
+    /** Today's local epoch day when the state was built. */
+    val today: Long = 0,
 ) {
     val weekPercent: Int get() = if (weekScheduled == 0) 0 else Math.round(100f * weekDone / weekScheduled)
 }
@@ -94,6 +144,8 @@ fun buildHabitsState(
             },
             scheduledToday = isScheduled(habit.daysMask, today),
             doneToday = today in done,
+            doneDays = done,
+            startDay = start,
         )
     }
     val dueToday = items.filter { it.scheduledToday }
@@ -104,5 +156,6 @@ fun buildHabitsState(
         weekDone = weekDone,
         weekScheduled = weekScheduled,
         bestCurrentStreak = items.maxOfOrNull { it.streaks.current } ?: 0,
+        today = today,
     )
 }
