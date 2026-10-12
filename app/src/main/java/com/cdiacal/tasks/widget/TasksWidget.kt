@@ -10,6 +10,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
+import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -76,6 +77,10 @@ class CompleteTaskAction : ActionCallback {
     }
 }
 
+/** Opens the app. Uses the Intent overload, which is the one that resolves in Glance 1.1.0. */
+@Composable
+private fun openApp(): Action = actionStartActivity(Intent(LocalContext.current, MainActivity::class.java))
+
 @Composable
 private fun WidgetContent(tasks: List<Task>, count: Int, today: Long) {
     val context = LocalContext.current
@@ -88,7 +93,7 @@ private fun WidgetContent(tasks: List<Task>, count: Int, today: Long) {
             .padding(12.dp),
     ) {
         Row(GlanceModifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(GlanceModifier.defaultWeight().clickable(actionStartActivity<MainActivity>())) {
+            Column(GlanceModifier.defaultWeight().clickable(openApp())) {
                 Text(
                     context.getString(R.string.app_name),
                     style = TextStyle(color = TextWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold),
@@ -110,7 +115,7 @@ private fun WidgetContent(tasks: List<Task>, count: Int, today: Long) {
         }
 
         if (tasks.isEmpty()) {
-            Box(GlanceModifier.fillMaxSize().clickable(actionStartActivity<MainActivity>()), contentAlignment = Alignment.Center) {
+            Box(GlanceModifier.fillMaxSize().clickable(openApp()), contentAlignment = Alignment.Center) {
                 Text(
                     context.getString(R.string.widget_all_done),
                     style = TextStyle(color = Green, fontSize = 14.sp, fontWeight = FontWeight.Medium),
@@ -138,7 +143,7 @@ private fun TaskRow(task: Task, today: Long) {
             Box(GlanceModifier.size(20.dp).background(ImageProvider(R.drawable.widget_check_background))) {}
         }
         Spacer(GlanceModifier.width(4.dp))
-        Column(GlanceModifier.defaultWeight().clickable(actionStartActivity<MainActivity>())) {
+        Column(GlanceModifier.defaultWeight().clickable(openApp())) {
             Text(task.title, style = TextStyle(color = TextWhite, fontSize = 14.sp), maxLines = 1)
             task.dueDate?.let {
                 Text(
