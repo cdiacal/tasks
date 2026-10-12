@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.cdiacal.tasks.backup.AutoBackup
 import com.cdiacal.tasks.data.BackupData
 import com.cdiacal.tasks.data.BackupJson
 import com.cdiacal.tasks.data.Category
@@ -80,6 +81,36 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
                 todayUtcMillis = today,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TasksUiState())
+
+    private val _autoBackup = MutableStateFlow(AutoBackup.state(application))
+    val autoBackup: StateFlow<AutoBackup.State> = _autoBackup
+    private val _autoBackupRunning = MutableStateFlow(false)
+    val autoBackupRunning: StateFlow<Boolean> = _autoBackupRunning
+
+    private fun refreshAutoBackup() {
+        _autoBackup.value = AutoBackup.state(getApplication())
+    }
+
+    private suspend fun runAutoBackup() {
+        _autoBackupRunning.value = true
+        AutoBackup.runNow(getApplication())
+        _autoBackupRunning.value = false
+        refreshAutoBackup()
+    }
+
+    /** Stores the picked folder, turns the weekly backup on and makes a first copy right away. */
+    fun setAutoBackupFolder(uri: Uri) = viewModelScope.launch {
+        AutoBackup.setFolder(getApplication(), uri)
+        refreshAutoBackup()
+        runAutoBackup()
+    }
+
+    fun setAutoBackupEnabled(enabled: Boolean) {
+        AutoBackup.setEnabled(getApplication(), enabled)
+        refreshAutoBackup()
+    }
+
+    fun autoBackupNow() = viewModelScope.launch { runAutoBackup() }
 
     fun setThemeMode(mode: ThemeMode) {
         _themeMode.value = mode

@@ -112,4 +112,15 @@
     <string name="step_add">Añadir paso</string>
     <string name="step_remove">Quitar paso</string>
     <string name="steps_progress">%1$d/%2$d pasos</string>
+    <string name="auto_backup_title">Copia automática</string>
+    <string name="auto_backup_desc">Cada semana se guarda una copia en la carpeta que elijas (puede ser de Google Drive) y se conservan las 5 últimas. Para recuperarla, usa «Restaurar copia de seguridad» y elige el archivo de esa carpeta.</string>
+    <string name="auto_backup_folder">Carpeta</string>
+    <string name="auto_backup_no_folder">Ninguna carpeta elegida</string>
+    <string name="auto_backup_choose">Elegir carpeta</string>
+    <string name="auto_backup_switch">Copia semanal</string>
+    <string name="auto_backup_now">Copiar ahora</string>
+    <string name="auto_backup_running">Copiando…</string>
+    <string name="auto_backup_last">Última copia: %1$s</string>
+    <string name="auto_backup_never">Todavía no se ha hecho ninguna copia</string>
+    <string name="auto_backup_error">Error: %1$s</string>
 </resources>

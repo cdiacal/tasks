@@ -105,6 +105,12 @@ fun TasksScreen(
     }
     var managingCategories by remember { mutableStateOf(false) }
     var searching by rememberSaveable { mutableStateOf(false) }
+    var showAutoBackup by remember { mutableStateOf(false) }
+    val autoBackup by viewModel.autoBackup.collectAsStateWithLifecycle()
+    val autoBackupRunning by viewModel.autoBackupRunning.collectAsStateWithLifecycle()
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) viewModel.setAutoBackupFolder(uri)
+    }
     // null = closed; Category(name = "") = new category; otherwise editing.
     var editingCategory by remember { mutableStateOf<Category?>(null) }
     val categoriesById = remember(state.categories) { state.categories.associateBy { it.id } }
@@ -190,6 +196,7 @@ fun TasksScreen(
                 onExportBackup = { exportLauncher.launch("tareas-${LocalDate.now()}.json") },
                 onImportBackup = { importLauncher.launch(arrayOf("*/*")) },
                 onSearch = { searching = true },
+                onAutoBackup = { showAutoBackup = true },
             )
 
             if (searching) {
@@ -252,6 +259,17 @@ fun TasksScreen(
                 }
             }
         }
+    }
+
+    if (showAutoBackup) {
+        AutoBackupDialog(
+            state = autoBackup,
+            running = autoBackupRunning,
+            onChooseFolder = { folderPicker.launch(null) },
+            onEnabledChange = viewModel::setAutoBackupEnabled,
+            onRunNow = viewModel::autoBackupNow,
+            onDismiss = { showAutoBackup = false },
+        )
     }
 
     pendingRestore?.let { data ->
@@ -323,6 +341,7 @@ private fun Hero(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
     onSearch: () -> Unit,
+    onAutoBackup: () -> Unit,
 ) {
     val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
     CabeceraHero {
@@ -340,7 +359,15 @@ private fun Hero(
                 IconButton(onClick = onSearch) {
                     Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search), tint = Color.White)
                 }
-                OptionsMenu(themeMode, onThemeMode, onClearDone, onManageCategories, onExportBackup, onImportBackup)
+                OptionsMenu(
+                    themeMode,
+                    onThemeMode,
+                    onClearDone,
+                    onManageCategories,
+                    onExportBackup,
+                    onImportBackup,
+                    onAutoBackup,
+                )
             }
         }
         Text(
@@ -369,6 +396,7 @@ private fun OptionsMenu(
     onManageCategories: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
+    onAutoBackup: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     IconButton(onClick = { open = true }) {
@@ -418,6 +446,13 @@ private fun OptionsMenu(
             text = { Text(stringResource(R.string.backup_export)) },
             onClick = {
                 onExportBackup()
+                open = false
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.auto_backup_title)) },
+            onClick = {
+                onAutoBackup()
                 open = false
             },
         )
