@@ -9,6 +9,7 @@ import com.cdiacal.tasks.data.BackupData
 import com.cdiacal.tasks.data.BackupJson
 import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.InvalidBackupException
+import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.widget.createRepository
 import com.cdiacal.tasks.ui.theme.ThemeMode
@@ -29,6 +30,8 @@ data class TasksUiState(
     /** Category used to filter the list, or null for all. */
     val selectedCategoryId: Long? = null,
     val query: String = "",
+    /** Checklist steps of every task, keyed by task id. */
+    val subtasksByTask: Map<Long, List<Subtask>> = emptyMap(),
     val stats: TaskStats = TaskStats(0, 0, 0, 0),
     /** Today's local date as UTC midnight millis (same unit as [Task.dueDate]). */
     val todayUtcMillis: Long = 0,
@@ -46,20 +49,34 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     )
     val themeMode: StateFlow<ThemeMode> = _themeMode
 
+    private data class Source(val tasks: List<Task>, val categories: List<Category>, val subtasks: List<Subtask>)
+
+    private val source = combine(repository.tasks, repository.categories, repository.subtasks) { t, c, s ->
+        Source(t, c, s)
+    }
+
     val uiState: StateFlow<TasksUiState> =
-        combine(repository.tasks, filter, categoryFilter, repository.categories, query) { all, f, categoryId, categories, q ->
+        combine(source, filter, categoryFilter, query) { src, f, categoryId, q ->
             val today = reminderToUtcDateMillis(System.currentTimeMillis())
-            val categoryNames = categories.associate { it.id to it.name }
-            val visible = f.apply(all).inCategory(categoryId).filter { task ->
-                matchesQuery(q, task.title, task.notes, task.categoryId?.let(categoryNames::get).orEmpty())
+            val categoryNames = src.categories.associate { it.id to it.name }
+            val steps = src.subtasks.groupBy { it.taskId }
+            val visible = f.apply(src.tasks).inCategory(categoryId).filter { task ->
+                matchesQuery(
+                    q,
+                    task.title,
+                    task.notes,
+                    task.categoryId?.let(categoryNames::get).orEmpty(),
+                    *steps[task.id].orEmpty().map { it.title }.toTypedArray(),
+                )
             }
             TasksUiState(
                 tasks = visible,
                 query = q,
                 filter = f,
-                categories = categories,
+                categories = src.categories,
+                subtasksByTask = steps,
                 selectedCategoryId = categoryId,
-                stats = computeStats(all, today),
+                stats = computeStats(src.tasks, today),
                 todayUtcMillis = today,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TasksUiState())
@@ -117,12 +134,18 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
 
     fun save(task: Task) = viewModelScope.launch { repository.save(task) }
 
-    fun toggleDone(task: Task) = save(task.copy(isDone = !task.isDone))
+    fun saveWithSteps(task: Task, steps: List<Subtask>) =
+        viewModelScope.launch { repository.saveWithSubtasks(task, steps) }
+
+    /** Completes/reopens a task. For a repeating task, [onRescheduled] gets its next due date. */
+    fun toggleDone(task: Task, onRescheduled: (Long) -> Unit = {}) = viewModelScope.launch {
+        repository.toggleDone(task)?.let(onRescheduled)
+    }
 
     fun delete(task: Task) = viewModelScope.launch { repository.delete(task) }
 
     /** Used by "undo": re-inserts the exact same task (same id). */
-    fun restore(task: Task) = save(task)
+    fun restore(task: Task, steps: List<Subtask> = emptyList()) = saveWithSteps(task, steps)
 
     fun clearDone() = viewModelScope.launch { repository.clearDone() }
 

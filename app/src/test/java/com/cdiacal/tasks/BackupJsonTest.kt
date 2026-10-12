@@ -3,6 +3,7 @@ package com.cdiacal.tasks
 import com.cdiacal.tasks.data.BackupJson
 import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.InvalidBackupException
+import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitCheck
@@ -40,6 +41,24 @@ class BackupJsonTest {
         val habit = Habit(id = 6, name = "Agua", createdAt = 5)
         val data = BackupJson.decode(BackupJson.encode(tasks, categories, 0, listOf(habit), emptyList()))
         assertNull(data.habits!!.single().reminderMinutes)
+    }
+
+    @Test fun recurrenceAndSubtasksRoundTrip() {
+        val repeating = Task(id = 9, title = "Alquiler", dueDate = 5_000L, recurrence = "MONTHLY", createdAt = 1)
+        val steps = listOf(
+            Subtask(id = 1, taskId = 9, title = "Transferencia", isDone = true, position = 0),
+            Subtask(id = 2, taskId = 9, title = "Guardar recibo", isDone = false, position = 1),
+        )
+        val data = BackupJson.decode(BackupJson.encode(listOf(repeating), emptyList(), 0, subtasks = steps))
+        assertEquals("MONTHLY", data.tasks.single().recurrence)
+        assertEquals(steps, data.subtasks)
+    }
+
+    @Test fun oldBackupsDefaultToNoRepeatAndNoSteps() {
+        val json = """{"app":"tareas","version":1,"tasks":[{"id":1,"title":"x"}]}"""
+        val data = BackupJson.decode(json)
+        assertEquals("NONE", data.tasks.single().recurrence)
+        assertEquals(0, data.subtasks.size)
     }
 
     @Test fun nullFieldsStayNull() {

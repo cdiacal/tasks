@@ -3,6 +3,7 @@ package com.cdiacal.tasks.data
 import androidx.room.withTransaction
 import com.cdiacal.tasks.reminders.HabitReminderScheduler
 import com.cdiacal.tasks.reminders.ReminderScheduler
+import com.cdiacal.tasks.ui.reminderToUtcDateMillis
 import kotlinx.coroutines.flow.Flow
 
 class TaskRepository(
@@ -15,9 +16,11 @@ class TaskRepository(
     private val dao = db.taskDao()
     private val categoryDao = db.categoryDao()
     private val habitDao = db.habitDao()
+    private val subtaskDao = db.subtaskDao()
 
     val tasks: Flow<List<Task>> = dao.observeAll()
     val categories: Flow<List<Category>> = categoryDao.observeAll()
+    val subtasks: Flow<List<Subtask>> = subtaskDao.observeAll()
 
     suspend fun save(task: Task) {
         val id = dao.upsert(task)
@@ -26,8 +29,39 @@ class TaskRepository(
         onTasksChanged()
     }
 
+    /** Saves the task together with its checklist, replacing any previous steps, atomically. */
+    suspend fun saveWithSubtasks(task: Task, steps: List<Subtask>) {
+        val id = db.withTransaction {
+            val id = dao.upsert(task)
+            subtaskDao.deleteForTask(id)
+            subtaskDao.insertAll(steps.mapIndexed { index, s -> s.copy(id = 0, taskId = id, position = index) })
+            id
+        }
+        reminders.sync(task.copy(id = id))
+        onTasksChanged()
+    }
+
+    /**
+     * Completes an open task or reopens a done one. A repeating task is rescheduled instead of
+     * closed (and its steps start over); the new due date is returned so the UI can say so.
+     */
+    suspend fun toggleDone(task: Task): Long? {
+        if (task.isDone) {
+            save(task.copy(isDone = false))
+            return null
+        }
+        val updated = completeTask(task, reminderToUtcDateMillis(System.currentTimeMillis()))
+        save(updated)
+        if (updated.isDone) return null
+        subtaskDao.uncheckAll(task.id)
+        return updated.dueDate
+    }
+
     suspend fun delete(task: Task) {
-        dao.delete(task)
+        db.withTransaction {
+            subtaskDao.deleteForTask(task.id)
+            dao.delete(task)
+        }
         reminders.cancel(task.id)
         onTasksChanged()
     }
@@ -47,6 +81,7 @@ class TaskRepository(
             exportedAt = System.currentTimeMillis(),
             habits = habitDao.getAllHabits(),
             habitChecks = habitDao.getAllChecks(),
+            subtasks = subtaskDao.getAll(),
         )
         return json to tasks.size
     }
@@ -60,6 +95,8 @@ class TaskRepository(
             categoryDao.deleteAll()
             categoryDao.insertAll(data.categories)
             dao.insertAll(data.tasks)
+            subtaskDao.deleteAll()
+            subtaskDao.insertAll(data.subtasks)
             // Old backups have no habits section: keep the current habits in that case.
             data.habits?.let { habits ->
                 habitDao.deleteAllChecks()

@@ -63,7 +63,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.BackupData
 import com.cdiacal.tasks.data.Category
+import com.cdiacal.tasks.data.Recurrence
+import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
+import com.cdiacal.tasks.data.recurrenceKind
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.CabeceraHero
 import com.cdiacal.tasks.ui.components.CifraHero
@@ -151,6 +154,7 @@ fun TasksScreen(
     val undoLabel = stringResource(R.string.undo)
 
     fun deleteWithUndo(task: Task) {
+        val steps = state.subtasksByTask[task.id].orEmpty() // kept so "undo" brings them back too
         viewModel.delete(task)
         scope.launch {
             snackbarHostState.currentSnackbarData?.dismiss()
@@ -159,7 +163,7 @@ fun TasksScreen(
                 actionLabel = undoLabel,
                 duration = SnackbarDuration.Short,
             )
-            if (result == SnackbarResult.ActionPerformed) viewModel.restore(task)
+            if (result == SnackbarResult.ActionPerformed) viewModel.restore(task, steps)
         }
     }
 
@@ -236,7 +240,12 @@ fun TasksScreen(
                             task = task,
                             todayUtcMillis = state.todayUtcMillis,
                             category = task.categoryId?.let(categoriesById::get),
-                            onToggle = { viewModel.toggleDone(task) },
+                            steps = state.subtasksByTask[task.id].orEmpty(),
+                            onToggle = {
+                                viewModel.toggleDone(task) { next ->
+                                    showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
+                                }
+                            },
                             onClick = { editing = task },
                         )
                     }
@@ -283,19 +292,20 @@ fun TasksScreen(
     editing?.let { task ->
         TaskEditorDialog(
             initial = task,
+            initialSteps = state.subtasksByTask[task.id].orEmpty(),
             categories = state.categories,
             onDismiss = { editing = null },
             onDelete = {
                 editing = null
                 deleteWithUndo(task)
             },
-            onSave = {
-                viewModel.save(it)
+            onSave = { saved, steps ->
+                viewModel.saveWithSteps(saved, steps)
                 editing = null
                 val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                     PackageManager.PERMISSION_GRANTED
-                if (it.reminderAt != null && needsPermission) {
+                if (saved.reminderAt != null && needsPermission) {
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             },
@@ -472,8 +482,17 @@ private fun SearchBar(query: String, onQuery: (String) -> Unit, onClose: () -> U
 }
 
 @Composable
-private fun TaskCard(task: Task, todayUtcMillis: Long, category: Category?, onToggle: () -> Unit, onClick: () -> Unit) {
+private fun TaskCard(
+    task: Task,
+    todayUtcMillis: Long,
+    category: Category?,
+    steps: List<Subtask>,
+    onToggle: () -> Unit,
+    onClick: () -> Unit,
+) {
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
+    val kind = task.recurrenceKind()
+    val repeatLabel = if (kind == Recurrence.NONE) null else recurrenceLabel(kind)
     val dueColor = when (dueState(task, todayUtcMillis)) {
         DueState.OVERDUE -> colorGasto()
         DueState.SOON -> colorAviso()
@@ -500,7 +519,20 @@ private fun TaskCard(task: Task, todayUtcMillis: Long, category: Category?, onTo
                     Text(it.name, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                 }
                 task.dueDate?.let {
-                    Text(formatDate(it), fontSize = 12.sp, color = dueColor, maxLines = 1)
+                    Text(
+                        formatDate(it) + (repeatLabel?.let { label -> " · 🔁 $label" } ?: ""),
+                        fontSize = 12.sp,
+                        color = dueColor,
+                        maxLines = 1,
+                    )
+                }
+                if (steps.isNotEmpty()) {
+                    Text(
+                        stringResource(R.string.steps_progress, steps.count { it.isDone }, steps.size),
+                        fontSize = 12.sp,
+                        color = secondary,
+                        maxLines = 1,
+                    )
                 }
                 task.reminderAt?.let {
                     Text("🔔 ${formatReminder(it)}", fontSize = 12.sp, color = secondary, maxLines = 1)

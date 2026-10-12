@@ -15,6 +15,8 @@ data class BackupData(
     val tasks: List<Task>,
     val habits: List<Habit>? = null,
     val habitChecks: List<HabitCheck> = emptyList(),
+    /** Absent in older files; restoring always replaces the steps with these. */
+    val subtasks: List<Subtask> = emptyList(),
 )
 
 /** The file is not a readable Tareas backup (wrong app, newer version, or malformed). */
@@ -31,6 +33,7 @@ object BackupJson {
         exportedAt: Long,
         habits: List<Habit> = emptyList(),
         habitChecks: List<HabitCheck> = emptyList(),
+        subtasks: List<Subtask> = emptyList(),
     ): String {
         val root = JSONObject()
             .put("app", APP)
@@ -58,7 +61,23 @@ object BackupJson {
                                 .put("dueDate", t.dueDate ?: JSONObject.NULL)
                                 .put("reminderAt", t.reminderAt ?: JSONObject.NULL)
                                 .put("categoryId", t.categoryId ?: JSONObject.NULL)
+                                .put("recurrence", t.recurrence)
                                 .put("createdAt", t.createdAt),
+                        )
+                    }
+                },
+            )
+            .put(
+                "subtasks",
+                JSONArray().apply {
+                    subtasks.forEach { s ->
+                        put(
+                            JSONObject()
+                                .put("id", s.id)
+                                .put("taskId", s.taskId)
+                                .put("title", s.title)
+                                .put("isDone", s.isDone)
+                                .put("position", s.position),
                         )
                     }
                 },
@@ -106,6 +125,7 @@ object BackupJson {
                     dueDate = o.longOrNull("dueDate"),
                     reminderAt = o.longOrNull("reminderAt"),
                     categoryId = o.longOrNull("categoryId"),
+                    recurrence = Recurrence.fromName(o.optString("recurrence", "")).name,
                     createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                 )
             }
@@ -126,7 +146,16 @@ object BackupJson {
             val checks = root.optJSONArray("habitChecks").objects().map { o ->
                 HabitCheck(habitId = o.getLong("habitId"), epochDay = o.getLong("epochDay"))
             }
-            return BackupData(categories, tasks, habits, checks)
+            val subtasks = root.optJSONArray("subtasks").objects().map { o ->
+                Subtask(
+                    id = o.getLong("id"),
+                    taskId = o.getLong("taskId"),
+                    title = o.getString("title"),
+                    isDone = o.optBoolean("isDone", false),
+                    position = o.optInt("position", 0),
+                )
+            }
+            return BackupData(categories, tasks, habits, checks, subtasks)
         } catch (e: JSONException) {
             throw InvalidBackupException("Malformed backup", e)
         }

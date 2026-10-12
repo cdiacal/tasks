@@ -2,6 +2,18 @@ package com.cdiacal.tasks.ui
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +41,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.Category
+import com.cdiacal.tasks.data.Recurrence
+import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.BotonSecundario
@@ -37,6 +51,17 @@ import com.cdiacal.tasks.ui.theme.colorGasto
 import java.text.DateFormat
 import java.util.Date
 import java.util.TimeZone
+
+@Composable
+fun recurrenceLabel(kind: Recurrence): String = stringResource(
+    when (kind) {
+        Recurrence.NONE -> R.string.repeat_none
+        Recurrence.DAILY -> R.string.repeat_daily
+        Recurrence.WEEKLY -> R.string.repeat_weekly
+        Recurrence.MONTHLY -> R.string.repeat_monthly
+        Recurrence.YEARLY -> R.string.repeat_yearly
+    },
+)
 
 /** The date picker works in UTC midnight millis, so format in UTC to avoid off-by-one days. */
 fun formatDate(utcMillis: Long): String =
@@ -47,22 +72,34 @@ fun formatDate(utcMillis: Long): String =
 @Composable
 fun TaskEditorDialog(
     initial: Task,
+    initialSteps: List<Subtask>,
     categories: List<Category>,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
-    onSave: (Task) -> Unit,
+    onSave: (Task, List<Subtask>) -> Unit,
 ) {
     var title by remember { mutableStateOf(initial.title) }
     var notes by remember { mutableStateOf(initial.notes) }
     var dueDate by remember { mutableStateOf(initial.dueDate) }
     var reminderAt by remember { mutableStateOf(initial.reminderAt) }
     var categoryId by remember { mutableStateOf(initial.categoryId) }
+    var recurrence by remember { mutableStateOf(initial.recurrence) }
+    val steps = remember { mutableStateListOf<Subtask>().apply { addAll(initialSteps) } }
+    var newStep by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
     // Reminder is picked in two steps: date first, then time. Holds the chosen date meanwhile.
     var pendingReminderDate by remember { mutableStateOf<Long?>(null) }
     var showReminderDate by remember { mutableStateOf(false) }
 
     val isNew = initial.id == 0L && initial.title.isEmpty()
+
+    fun addStep() {
+        val text = newStep.trim()
+        if (text.isNotEmpty()) {
+            steps.add(Subtask(taskId = initial.id, title = text))
+            newStep = ""
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -97,9 +134,35 @@ fun TaskEditorDialog(
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     if (dueDate != null) {
-                        TextButton(onClick = { dueDate = null }) {
+                        TextButton(onClick = {
+                            dueDate = null
+                            recurrence = Recurrence.NONE.name // a repeating task needs a date to repeat from
+                        }) {
                             Text(stringResource(R.string.no_due_date))
                         }
+                    }
+                }
+                Text(
+                    stringResource(R.string.repeat_label),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Recurrence.entries.forEach { kind ->
+                        Pastilla(
+                            texto = recurrenceLabel(kind),
+                            activa = recurrence == kind.name,
+                            onClick = {
+                                recurrence = kind.name
+                                // Repeating needs an anchor date: default to today.
+                                if (kind != Recurrence.NONE && dueDate == null) {
+                                    dueDate = reminderToUtcDateMillis(System.currentTimeMillis())
+                                }
+                            },
+                        )
                     }
                 }
                 Row(
@@ -144,6 +207,47 @@ fun TaskEditorDialog(
                         }
                     }
                 }
+                Text(
+                    stringResource(R.string.steps),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                steps.forEachIndexed { index, step ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = step.isDone,
+                            onCheckedChange = { steps[index] = step.copy(isDone = it) },
+                        )
+                        Text(
+                            step.title,
+                            modifier = Modifier.weight(1f),
+                            fontSize = 14.sp,
+                            color = if (step.isDone) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            textDecoration = if (step.isDone) TextDecoration.LineThrough else null,
+                        )
+                        IconButton(onClick = { steps.removeAt(index) }) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.step_remove))
+                        }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newStep,
+                        onValueChange = { newStep = it },
+                        placeholder = { Text(stringResource(R.string.step_hint)) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { addStep() }),
+                    )
+                    IconButton(onClick = { addStep() }, enabled = newStep.isNotBlank()) {
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.step_add))
+                    }
+                }
                 if (!isNew) {
                     TextButton(onClick = onDelete) {
                         Text(stringResource(R.string.delete), color = colorGasto())
@@ -156,6 +260,9 @@ fun TaskEditorDialog(
                 texto = stringResource(R.string.save),
                 enabled = title.isNotBlank(),
                 onClick = {
+                    // A step typed but not yet added with "+" is kept rather than silently lost.
+                    val pending = newStep.trim()
+                    val finalSteps = if (pending.isEmpty()) steps.toList() else steps + Subtask(taskId = initial.id, title = pending)
                     onSave(
                         initial.copy(
                             title = title.trim(),
@@ -163,7 +270,9 @@ fun TaskEditorDialog(
                             dueDate = dueDate,
                             reminderAt = reminderAt,
                             categoryId = categoryId,
+                            recurrence = if (dueDate == null) Recurrence.NONE.name else recurrence,
                         ),
+                        finalSteps,
                     )
                 },
             )

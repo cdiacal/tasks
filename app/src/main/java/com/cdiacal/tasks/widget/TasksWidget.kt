@@ -85,7 +85,7 @@ class CompleteTaskAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val id = parameters[TaskIdKey] ?: return
         val task = TaskDatabase.get(context).taskDao().getById(id) ?: return
-        createRepository(context).save(task.copy(isDone = true))
+        createRepository(context).toggleDone(task)
     }
 }
 

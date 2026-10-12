@@ -100,4 +100,16 @@
     <string name="search_hint">Buscar tareas…</string>
     <string name="search_close">Cerrar búsqueda</string>
     <string name="search_no_results">No hay tareas que coincidan con «%1$s».</string>
+    <string name="repeat_label">Repetición</string>
+    <string name="repeat_none">No se repite</string>
+    <string name="repeat_daily">Cada día</string>
+    <string name="repeat_weekly">Cada semana</string>
+    <string name="repeat_monthly">Cada mes</string>
+    <string name="repeat_yearly">Cada año</string>
+    <string name="task_repeats_next">Repetida: próxima vez %1$s</string>
+    <string name="steps">Pasos</string>
+    <string name="step_hint">Añadir un paso</string>
+    <string name="step_add">Añadir paso</string>
+    <string name="step_remove">Quitar paso</string>
+    <string name="steps_progress">%1$d/%2$d pasos</string>
 </resources>

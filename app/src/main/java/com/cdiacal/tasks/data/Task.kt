@@ -15,5 +15,7 @@ data class Task(
     val reminderAt: Long? = null,
     /** Id of the [Category] this task belongs to, or null for none. */
     val categoryId: Long? = null,
+    /** A [Recurrence] name. Repeating tasks always have a due date (their anchor). */
+    val recurrence: String = Recurrence.NONE.name,
     val createdAt: Long = System.currentTimeMillis(),
 )
