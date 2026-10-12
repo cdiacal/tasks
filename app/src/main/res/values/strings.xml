@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tareas</string>
+    <string name="filter_pending">Pendientes</string>
+    <string name="filter_done">Hechas</string>
+    <string name="filter_all">Todas</string>
+    <string name="add_task">Nueva tarea</string>
+    <string name="edit_task">Editar tarea</string>
+    <string name="title_label">Título</string>
+    <string name="notes_label">Notas</string>
+    <string name="due_date">Fecha límite</string>
+    <string name="no_due_date">Sin fecha</string>
+    <string name="save">Guardar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="delete">Eliminar</string>
+    <string name="clear_done">Borrar hechas</string>
+    <string name="empty_pending">¡Todo al día! No tienes tareas pendientes.</string>
+    <string name="empty_done">Aún no has completado ninguna tarea.</string>
+    <string name="empty_all">No hay tareas. Pulsa + para añadir una.</string>
+    <string name="task_deleted">Tarea eliminada</string>
+    <string name="undo">Deshacer</string>
+</resources>
