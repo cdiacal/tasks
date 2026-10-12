@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.data.TaskDatabase
 import com.cdiacal.tasks.data.TaskRepository
+import com.cdiacal.tasks.reminders.ReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +22,10 @@ data class TasksUiState(
 )
 
 class TasksViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = TaskRepository(TaskDatabase.get(application).taskDao())
+    private val repository = TaskRepository(
+        TaskDatabase.get(application).taskDao(),
+        ReminderScheduler(application),
+    )
     private val filter = MutableStateFlow(TaskFilter.PENDING)
 
     val uiState: StateFlow<TasksUiState> =

@@ -11,5 +11,7 @@ data class Task(
     val isDone: Boolean = false,
     /** Due date as epoch millis at UTC midnight, or null when there is none. */
     val dueDate: Long? = null,
+    /** Reminder moment as epoch millis (absolute instant), or null when there is none. */
+    val reminderAt: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )

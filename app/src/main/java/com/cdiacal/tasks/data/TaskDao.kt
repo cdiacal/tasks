@@ -24,6 +24,9 @@ interface TaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(task: Task): Long
 
+    @Query("SELECT * FROM tasks WHERE isDone = 0 AND reminderAt IS NOT NULL AND reminderAt > :now")
+    suspend fun pendingReminders(now: Long): List<Task>
+
     @Delete
     suspend fun delete(task: Task)
 

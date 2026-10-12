@@ -1,5 +1,10 @@
 package com.cdiacal.tasks.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,10 +42,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
@@ -56,6 +63,11 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
 
     // null = dialog closed; Task(title = "") = new task; otherwise editing.
     var editing by remember { mutableStateOf<Task?>(null) }
+
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* If denied, reminders are saved but no notification is shown. */ }
 
     val deletedMessage = stringResource(R.string.task_deleted)
     val undoLabel = stringResource(R.string.undo)
@@ -121,6 +133,12 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
             onSave = {
                 viewModel.save(it)
                 editing = null
+                val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
+                if (it.reminderAt != null && needsPermission) {
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             },
         )
     }
@@ -183,6 +201,7 @@ private fun TaskRow(task: Task, onToggle: () -> Unit, onClick: () -> Unit, onDel
         supportingContent = {
             val parts = listOfNotNull(
                 task.dueDate?.let { formatDate(it) },
+                task.reminderAt?.let { "🔔 ${formatReminder(it)}" },
                 task.notes.takeIf { it.isNotBlank() },
             )
             if (parts.isNotEmpty()) {

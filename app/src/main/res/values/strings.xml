@@ -19,4 +19,11 @@
     <string name="empty_all">No hay tareas. Pulsa + para añadir una.</string>
     <string name="task_deleted">Tarea eliminada</string>
     <string name="undo">Deshacer</string>
+    <string name="reminder">Recordatorio</string>
+    <string name="no_reminder">Quitar</string>
+    <string name="reminder_in_past">Esa hora ya pasó: no sonará ningún aviso.</string>
+    <string name="reminders_channel">Recordatorios de tareas</string>
+    <string name="reminder_title">Tarea pendiente</string>
+    <string name="pick_time">Elegir hora</string>
+    <string name="next">Siguiente</string>
 </resources>
