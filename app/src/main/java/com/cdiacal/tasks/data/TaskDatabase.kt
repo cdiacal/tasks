@@ -13,8 +13,8 @@ import com.cdiacal.tasks.habits.HabitDao
 // Schemas are not exported: the debug and release KSP tasks run in parallel and would race on
 // the same schema file ("Empty schema file"), and no exported schemas are kept in the repo.
 @Database(
-    entities = [Task::class, Category::class, Habit::class, HabitCheck::class, Subtask::class],
-    version = 7,
+    entities = [Task::class, Category::class, Habit::class, HabitCheck::class, Subtask::class, TaskCompletion::class],
+    version = 8,
     exportSchema = false,
 )
 abstract class TaskDatabase : RoomDatabase() {
@@ -22,6 +22,7 @@ abstract class TaskDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun habitDao(): HabitDao
     abstract fun subtaskDao(): SubtaskDao
+    abstract fun completionDao(): TaskCompletionDao
 
     companion object {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -87,6 +88,18 @@ abstract class TaskDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Past completions were never recorded, so the log starts empty.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS task_completions (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "taskId INTEGER NOT NULL, " +
+                        "epochDay INTEGER NOT NULL)",
+                )
+            }
+        }
+
         @Volatile private var instance: TaskDatabase? = null
 
         fun get(context: Context): TaskDatabase =
@@ -95,7 +108,7 @@ abstract class TaskDatabase : RoomDatabase() {
                     context.applicationContext,
                     TaskDatabase::class.java,
                     "tasks.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build().also { instance = it }
             }
     }
 }

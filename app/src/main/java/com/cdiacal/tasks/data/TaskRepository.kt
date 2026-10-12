@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.cdiacal.tasks.reminders.HabitReminderScheduler
 import com.cdiacal.tasks.reminders.ReminderScheduler
 import com.cdiacal.tasks.ui.reminderToUtcDateMillis
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 class TaskRepository(
@@ -17,10 +18,12 @@ class TaskRepository(
     private val categoryDao = db.categoryDao()
     private val habitDao = db.habitDao()
     private val subtaskDao = db.subtaskDao()
+    private val completionDao = db.completionDao()
 
     val tasks: Flow<List<Task>> = dao.observeAll()
     val categories: Flow<List<Category>> = categoryDao.observeAll()
     val subtasks: Flow<List<Subtask>> = subtaskDao.observeAll()
+    val completions: Flow<List<TaskCompletion>> = completionDao.observeAll()
 
     suspend fun save(task: Task) {
         val id = dao.upsert(task)
@@ -67,10 +70,12 @@ class TaskRepository(
     suspend fun toggleDone(task: Task): Long? {
         if (task.isDone) {
             save(task.copy(isDone = false))
+            completionDao.deleteLatestFor(task.id)
             return null
         }
         val updated = completeTask(task, reminderToUtcDateMillis(System.currentTimeMillis()))
         save(updated)
+        completionDao.insert(TaskCompletion(taskId = task.id, epochDay = LocalDate.now().toEpochDay()))
         if (updated.isDone) return null
         subtaskDao.uncheckAll(task.id)
         return updated.dueDate
@@ -101,6 +106,7 @@ class TaskRepository(
             habits = habitDao.getAllHabits(),
             habitChecks = habitDao.getAllChecks(),
             subtasks = subtaskDao.getAll(),
+            completions = completionDao.getAll(),
         )
         return json to tasks.size
     }
@@ -116,6 +122,8 @@ class TaskRepository(
             dao.insertAll(data.tasks)
             subtaskDao.deleteAll()
             subtaskDao.insertAll(data.subtasks)
+            // Old backups have no completion log: keep the current one in that case.
+            data.completions?.let { completionDao.deleteAll(); completionDao.insertAll(it) }
             // Old backups have no habits section: keep the current habits in that case.
             data.habits?.let { habits ->
                 habitDao.deleteAllChecks()

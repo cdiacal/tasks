@@ -22,6 +22,11 @@ App Android para controlar tareas pendientes y hábitos. Todo se guarda en el pr
 - Calendario mensual con el historial (los días pasados se pueden marcar o desmarcar)
 - Recordatorio diario opcional (solo los días que tocan; no avisa si ya está hecho; botón «Hecho»)
 
+**Estadísticas**
+- Tareas completadas por semana (últimas 8; el histórico empieza al instalar esta versión), pendientes y vencidas
+- Cumplimiento semanal de hábitos y rachas por hábito
+- El registro de tareas completadas va incluido en la copia de seguridad
+
 **Widgets de pantalla de inicio:** «Tareas pendientes» y «Hábitos de hoy» (se marcan sin abrir la app)
 
 **Datos**
@@ -66,6 +71,6 @@ workflow genera un APK firmado con la clave de depuración. Guarda la clave en u
 pierde, hay que desinstalar la app (y perder sus datos) para instalar una versión firmada con otra.
 
 ## Formato de la copia de seguridad
-JSON legible con `app`, `version`, `categories`, `tasks`, `subtasks`, `habits` y `habitChecks`.
+JSON legible con `app`, `version`, `categories`, `tasks`, `subtasks`, `habits`, `habitChecks` y `completions`.
 Restaurar **reemplaza** todos los datos. Las copias antiguas sin sección de hábitos no tocan los
 hábitos actuales.

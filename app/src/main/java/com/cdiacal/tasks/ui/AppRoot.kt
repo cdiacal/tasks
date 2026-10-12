@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.HorizontalDivider
@@ -57,8 +58,10 @@ fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigg
                     onOpenSettings = { showSettings = true },
                     onEditorVisibleChange = { editorOpen = it },
                 )
-            } else {
+            } else if (tab == 1) {
                 HabitsScreen(onOpenSettings = { showSettings = true })
+            } else {
+                StatsScreen(onOpenSettings = { showSettings = true })
             }
         }
         if (!editorOpen) {
@@ -83,6 +86,13 @@ fun AppRoot(tasksViewModel: TasksViewModel, newTaskTrigger: Int, openHabitsTrigg
                 onClick = { tab = 1 },
                 icon = { Icon(Icons.Default.LocalFireDepartment, contentDescription = null) },
                 label = { Text(stringResource(R.string.tab_habits)) },
+                colors = colors,
+            )
+            NavigationBarItem(
+                selected = tab == 2,
+                onClick = { tab = 2 },
+                icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
+                label = { Text(stringResource(R.string.tab_stats)) },
                 colors = colors,
             )
         }

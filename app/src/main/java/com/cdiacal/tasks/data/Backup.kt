@@ -17,6 +17,8 @@ data class BackupData(
     val habitChecks: List<HabitCheck> = emptyList(),
     /** Absent in older files; restoring always replaces the steps with these. */
     val subtasks: List<Subtask> = emptyList(),
+    /** Null when the file predates the completion log: restoring then keeps the current log. */
+    val completions: List<TaskCompletion>? = null,
 )
 
 /** The file is not a readable Tareas backup (wrong app, newer version, or malformed). */
@@ -34,6 +36,7 @@ object BackupJson {
         habits: List<Habit> = emptyList(),
         habitChecks: List<HabitCheck> = emptyList(),
         subtasks: List<Subtask> = emptyList(),
+        completions: List<TaskCompletion> = emptyList(),
     ): String {
         val root = JSONObject()
             .put("app", APP)
@@ -80,6 +83,14 @@ object BackupJson {
                                 .put("isDone", s.isDone)
                                 .put("position", s.position),
                         )
+                    }
+                },
+            )
+            .put(
+                "completions",
+                JSONArray().apply {
+                    completions.forEach { c ->
+                        put(JSONObject().put("id", c.id).put("taskId", c.taskId).put("epochDay", c.epochDay))
                     }
                 },
             )
@@ -157,7 +168,14 @@ object BackupJson {
                     position = o.optInt("position", 0),
                 )
             }
-            return BackupData(categories, tasks, habits, checks, subtasks)
+            val completions = if (root.has("completions")) {
+                root.optJSONArray("completions").objects().map { o ->
+                    TaskCompletion(id = o.getLong("id"), taskId = o.getLong("taskId"), epochDay = o.getLong("epochDay"))
+                }
+            } else {
+                null
+            }
+            return BackupData(categories, tasks, habits, checks, subtasks, completions)
         } catch (e: JSONException) {
             throw InvalidBackupException("Malformed backup", e)
         }
