@@ -35,6 +35,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,7 +73,7 @@ import java.util.Date
 import kotlinx.coroutines.launch
 
 @Composable
-fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
+fun TasksScreen(viewModel: TasksViewModel = viewModel(), newTaskTrigger: Int = 0) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -80,6 +81,10 @@ fun TasksScreen(viewModel: TasksViewModel = viewModel()) {
 
     // null = dialog closed; Task(title = "") = new task; otherwise editing.
     var editing by remember { mutableStateOf<Task?>(null) }
+    // The home-screen widget's "+" button asks the app to open the new-task dialog.
+    LaunchedEffect(newTaskTrigger) {
+        if (newTaskTrigger > 0) editing = Task(title = "")
+    }
     var managingCategories by remember { mutableStateOf(false) }
     // null = closed; Category(name = "") = new category; otherwise editing.
     var editingCategory by remember { mutableStateOf<Category?>(null) }

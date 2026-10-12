@@ -21,6 +21,22 @@ interface TaskDao {
     )
     fun observeAll(): Flow<List<Task>>
 
+    @Query("SELECT * FROM tasks WHERE id = :id")
+    suspend fun getById(id: Long): Task?
+
+    @Query("SELECT COUNT(*) FROM tasks WHERE isDone = 0")
+    suspend fun pendingCount(): Int
+
+    // Same ordering as the app: nearest due date first, undated last, then newest.
+    @Query(
+        """
+        SELECT * FROM tasks WHERE isDone = 0
+        ORDER BY CASE WHEN dueDate IS NULL THEN 1 ELSE 0 END ASC, dueDate ASC, createdAt DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun pending(limit: Int): List<Task>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(task: Task): Long
 

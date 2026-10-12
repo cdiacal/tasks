@@ -46,4 +46,8 @@
     <string name="no_categories_yet">Aún no tienes categorías. Crea una para organizar tus tareas.</string>
     <string name="delete_category_hint">Las tareas de esta categoría no se borran: pasarán a «Ninguna».</string>
     <string name="close">Cerrar</string>
+    <string name="widget_name">Tareas pendientes</string>
+    <string name="widget_description">Tus tareas pendientes en la pantalla de inicio</string>
+    <string name="widget_pending_count">%1$d pendientes</string>
+    <string name="widget_all_done">¡Todo al día!</string>
 </resources>
