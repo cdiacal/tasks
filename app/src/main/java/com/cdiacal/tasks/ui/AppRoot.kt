@@ -45,6 +45,7 @@ fun AppRoot(
     var handledTrigger by remember { mutableIntStateOf(0) }
     var handledHabitTrigger by remember { mutableIntStateOf(0) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showCalendar by rememberSaveable { mutableStateOf(false) }
     // The full-screen task editor covers the bottom bar so a tab switch cannot discard an edit.
     var editorOpen by remember { mutableStateOf(false) }
     LaunchedEffect(newTaskTrigger) {
@@ -111,6 +112,7 @@ fun AppRoot(
         }
         }
     }
-    if (showSettings) SettingsScreen(tasksViewModel, onBack = { showSettings = false })
+    if (showSettings) SettingsScreen(tasksViewModel, onBack = { showSettings = false }, onOpenCalendar = { showCalendar = true })
+    if (showCalendar) CalendarPreviewScreen(onBack = { showCalendar = false })
     }
 }

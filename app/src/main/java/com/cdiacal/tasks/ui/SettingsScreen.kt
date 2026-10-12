@@ -63,7 +63,7 @@ import kotlinx.coroutines.launch
 
 /** Everything configurable in one place, in sections. Shown over the whole app. */
 @Composable
-fun SettingsScreen(viewModel: TasksViewModel, onBack: () -> Unit) {
+fun SettingsScreen(viewModel: TasksViewModel, onBack: () -> Unit, onOpenCalendar: () -> Unit = {}) {
     val context = LocalContext.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -244,6 +244,14 @@ fun SettingsScreen(viewModel: TasksViewModel, onBack: () -> Unit) {
                             stringResource(R.string.auto_backup_summary_off)
                         },
                         onClick = { showAutoBackup = true },
+                    )
+                }
+
+                SeccionTarjeta(stringResource(R.string.section_calendar)) {
+                    Fila(
+                        titulo = stringResource(R.string.calendar_row),
+                        detalle = stringResource(R.string.calendar_row_detail),
+                        onClick = onOpenCalendar,
                     )
                 }
 

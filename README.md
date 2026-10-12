@@ -1,7 +1,7 @@
 # Tareas
 
 App Android para controlar tareas pendientes y hábitos. Todo se guarda en el propio móvil; la app
-**no tiene permiso de internet**.
+**no tiene permiso de internet**. Lee el calendario del móvil solo si lo permites (solo lectura).
 
 **Stack:** Kotlin · Jetpack Compose (Material 3) · Room · ViewModel + StateFlow · Jetpack Glance
 (widgets) · WorkManager · minSdk 26
