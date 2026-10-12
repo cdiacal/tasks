@@ -13,8 +13,10 @@ android {
         applicationId = "com.cdiacal.tasks"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI builds get an ever-increasing version (GitHub run number); local builds use 1.
+        val ciRun = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        versionCode = ciRun ?: 1
+        versionName = "0.2.${ciRun ?: 0}"
     }
 
     // The release key is never stored in the repo: CI injects it through environment variables.

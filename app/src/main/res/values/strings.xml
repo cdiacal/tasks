@@ -96,4 +96,8 @@
     <string name="widget_habits_nothing">Nada para hoy</string>
     <string name="widget_habits_empty">Aún no tienes hábitos.\nCréalos en la app.</string>
     <string name="widget_habits_none_today">Hoy no toca ningún hábito</string>
+    <string name="search">Buscar</string>
+    <string name="search_hint">Buscar tareas…</string>
+    <string name="search_close">Cerrar búsqueda</string>
+    <string name="search_no_results">No hay tareas que coincidan con «%1$s».</string>
 </resources>

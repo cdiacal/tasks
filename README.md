@@ -1,33 +1,67 @@
 # Tareas
 
-App Android para controlar tareas pendientes.
+App Android para controlar tareas pendientes y hábitos. Todo se guarda en el propio móvil; la app
+**no tiene permiso de internet**.
 
-**Stack:** Kotlin · Jetpack Compose (Material 3) · Room · ViewModel + StateFlow · minSdk 26
+**Stack:** Kotlin · Jetpack Compose (Material 3) · Room · ViewModel + StateFlow · Jetpack Glance
+(widgets) · WorkManager · minSdk 26
 
-## Funciones (v0.1)
-- Crear, editar y eliminar tareas (con "Deshacer" al eliminar)
-- Marcar como hecha / pendiente
-- Título, notas y fecha límite opcional
-- Filtros: Pendientes / Hechas / Todas, y borrado de las hechas
-- Datos guardados localmente (Room), modo oscuro y colores dinámicos
+## Funciones
+
+**Tareas**
+- Crear, editar y eliminar (con «Deshacer»); marcar como hechas
+- Título, notas, fecha límite, categoría, recordatorio con notificación
+- Repetición (diaria, semanal, mensual, anual): al completarla se reprograma sola
+- Pasos (subtareas) con progreso en la tarjeta
+- Búsqueda por título, notas, categoría y pasos (sin distinguir mayúsculas ni tildes)
+- Filtros por estado y por categoría; categorías con emoji
+
+**Hábitos**
+- Días de la semana en que se hace, racha actual y mejor racha, vista de 7 días
+- Calendario mensual con el historial (los días pasados se pueden marcar o desmarcar)
+- Recordatorio diario opcional (solo los días que tocan; no avisa si ya está hecho; botón «Hecho»)
+
+**Widgets de pantalla de inicio:** «Tareas pendientes» y «Hábitos de hoy» (se marcan sin abrir la app)
+
+**Datos**
+- Copia de seguridad manual: exportar / restaurar un `.json` con el selector de archivos
+- Copia automática semanal a una carpeta elegida (conserva las últimas 5)
+
+**Diseño:** tema claro / oscuro / sistema, azul marino sobrio (ver `ui/theme`).
 
 ## Estructura
 ```
 app/src/main/java/com/cdiacal/tasks/
 ├── MainActivity.kt
-├── data/   Task, TaskDao, TaskDatabase, TaskRepository
-└── ui/     TasksScreen, TaskEditorDialog, TasksViewModel, TaskFilter, theme/
+├── data/       Task, Category, Subtask, DAOs, TaskDatabase (migraciones), copias (Backup.kt)
+├── habits/     Habit, HabitCheck, rachas y calendario (lógica pura y testeada)
+├── reminders/  alarmas de tareas y hábitos, notificaciones, reprogramación tras reinicio
+├── widget/     widgets Glance
+├── backup/     copia automática (WorkManager)
+└── ui/         pantallas, diálogos, componentes y tema
 ```
 
 ## Compilar
-Abre la carpeta en Android Studio (Koala o posterior) y pulsa Run, o desde terminal
-(requiere JDK 17 y Android SDK 34):
+Con Android Studio (Koala o posterior) abre la carpeta y pulsa Run, o por terminal (JDK 17 y
+Android SDK 34):
 
 ```
 ./gradlew assembleDebug
 ./gradlew test
 ```
 
-## Ideas siguientes
-Recordatorios (WorkManager/AlarmManager), tareas recurrentes, categorías/etiquetas,
-widget de pantalla de inicio, inyección de dependencias (Hilt) y pruebas de UI.
+## APK desde GitHub (sin ordenador)
+Cada `push` ejecuta `.github/workflows/build-apk.yml`: pasa los tests, compila el APK y lo publica
+en *Releases* (`tareas.apk`). El `versionCode` es el número de ejecución del workflow, así que cada
+APK es más nuevo que el anterior.
+
+**Firma:** para que el APK se actualice encima de la versión instalada, debe firmarse siempre con
+la misma clave. La clave **no está en el repositorio**: se inyecta desde los secretos de GitHub
+`KEYSTORE_BASE64` (el `.p12` en base64) y `KEYSTORE_PASSWORD` (alias `tareas`). Sin ellos, el
+workflow genera un APK firmado con la clave de depuración. Guarda la clave en un sitio seguro: si se
+pierde, hay que desinstalar la app (y perder sus datos) para instalar una versión firmada con otra.
+
+## Formato de la copia de seguridad
+JSON legible con `app`, `version`, `categories`, `tasks`, `subtasks`, `habits` y `habitChecks`.
+Restaurar **reemplaza** todos los datos. Las copias antiguas sin sección de hábitos no tocan los
+hábitos actuales.

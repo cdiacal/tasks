@@ -28,6 +28,7 @@ data class TasksUiState(
     val categories: List<Category> = emptyList(),
     /** Category used to filter the list, or null for all. */
     val selectedCategoryId: Long? = null,
+    val query: String = "",
     val stats: TaskStats = TaskStats(0, 0, 0, 0),
     /** Today's local date as UTC midnight millis (same unit as [Task.dueDate]). */
     val todayUtcMillis: Long = 0,
@@ -37,6 +38,7 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = createRepository(application)
     private val filter = MutableStateFlow(TaskFilter.PENDING)
     private val categoryFilter = MutableStateFlow<Long?>(null)
+    private val query = MutableStateFlow("")
 
     private val prefs = application.getSharedPreferences("settings", Context.MODE_PRIVATE)
     private val _themeMode = MutableStateFlow(
@@ -45,10 +47,15 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     val themeMode: StateFlow<ThemeMode> = _themeMode
 
     val uiState: StateFlow<TasksUiState> =
-        combine(repository.tasks, filter, categoryFilter, repository.categories) { all, f, categoryId, categories ->
+        combine(repository.tasks, filter, categoryFilter, repository.categories, query) { all, f, categoryId, categories, q ->
             val today = reminderToUtcDateMillis(System.currentTimeMillis())
+            val categoryNames = categories.associate { it.id to it.name }
+            val visible = f.apply(all).inCategory(categoryId).filter { task ->
+                matchesQuery(q, task.title, task.notes, task.categoryId?.let(categoryNames::get).orEmpty())
+            }
             TasksUiState(
-                tasks = f.apply(all).inCategory(categoryId),
+                tasks = visible,
+                query = q,
                 filter = f,
                 categories = categories,
                 selectedCategoryId = categoryId,
@@ -63,6 +70,8 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setFilter(value: TaskFilter) = filter.update { value }
+
+    fun setQuery(value: String) = query.update { value }
 
     /** Writes the backup JSON to [uri] (a document the user picked). Reports the task count. */
     fun writeBackup(uri: Uri, onResult: (Result<Int>) -> Unit) = viewModelScope.launch {

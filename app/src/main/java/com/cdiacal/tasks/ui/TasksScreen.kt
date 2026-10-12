@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
@@ -27,6 +30,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -39,9 +43,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -94,6 +101,7 @@ fun TasksScreen(
         }
     }
     var managingCategories by remember { mutableStateOf(false) }
+    var searching by rememberSaveable { mutableStateOf(false) }
     // null = closed; Category(name = "") = new category; otherwise editing.
     var editingCategory by remember { mutableStateOf<Category?>(null) }
     val categoriesById = remember(state.categories) { state.categories.associateBy { it.id } }
@@ -177,7 +185,19 @@ fun TasksScreen(
                 onManageCategories = { managingCategories = true },
                 onExportBackup = { exportLauncher.launch("tareas-${LocalDate.now()}.json") },
                 onImportBackup = { importLauncher.launch(arrayOf("*/*")) },
+                onSearch = { searching = true },
             )
+
+            if (searching) {
+                SearchBar(
+                    query = state.query,
+                    onQuery = viewModel::setQuery,
+                    onClose = {
+                        searching = false
+                        viewModel.setQuery("")
+                    },
+                )
+            }
 
             val filters = TaskFilter.entries
             FilaPestanas(
@@ -205,7 +225,7 @@ fun TasksScreen(
             }
 
             if (state.tasks.isEmpty()) {
-                EmptyState(state.filter)
+                EmptyState(state.filter, state.query)
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 128.dp),
@@ -292,6 +312,7 @@ private fun Hero(
     onManageCategories: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
+    onSearch: () -> Unit,
 ) {
     val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
     CabeceraHero {
@@ -305,7 +326,12 @@ private fun Hero(
                 )
                 Text(today, color = Color.White.copy(alpha = 0.82f), fontSize = 12.sp, maxLines = 1)
             }
-            OptionsMenu(themeMode, onThemeMode, onClearDone, onManageCategories, onExportBackup, onImportBackup)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onSearch) {
+                    Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search), tint = Color.White)
+                }
+                OptionsMenu(themeMode, onThemeMode, onClearDone, onManageCategories, onExportBackup, onImportBackup)
+            }
         }
         Text(
             stringResource(R.string.hero_pending_label),
@@ -404,8 +430,8 @@ private fun OptionsMenu(
 }
 
 @Composable
-private fun EmptyState(filter: TaskFilter) {
-    val text = when (filter) {
+private fun EmptyState(filter: TaskFilter, query: String) {
+    val text = if (query.isNotBlank()) R.string.search_no_results else when (filter) {
         TaskFilter.PENDING -> R.string.empty_pending
         TaskFilter.DONE -> R.string.empty_done
         TaskFilter.ALL -> R.string.empty_all
@@ -416,10 +442,32 @@ private fun EmptyState(filter: TaskFilter) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            stringResource(text),
+            if (query.isNotBlank()) stringResource(text, query.trim()) else stringResource(text),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun SearchBar(query: String, onQuery: (String) -> Unit, onClose: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQuery,
+            modifier = Modifier.weight(1f).focusRequester(focus),
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.search_hint)) },
+            shape = RoundedCornerShape(12.dp),
+        )
+        IconButton(onClick = onClose) {
+            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.search_close))
+        }
     }
 }
 
