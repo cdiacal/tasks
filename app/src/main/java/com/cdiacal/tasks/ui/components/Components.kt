@@ -2,6 +2,7 @@ package com.cdiacal.tasks.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -284,5 +285,50 @@ fun SeccionTarjeta(
             }
             content()
         }
+    }
+}
+
+/** Small filled circle used to show a colour-coded state (e.g. priority). */
+@Composable
+fun PuntoColor(color: Color, modifier: Modifier = Modifier, tamano: Dp = 8.dp) {
+    Box(modifier.size(tamano).clip(CircleShape).background(color))
+}
+
+/**
+ * A pill with a colour dot. Active, it gets a thin border and a faint tint of [color] (text stays
+ * the normal colour, so it stays readable for amber too); a null [color] uses the plain brand pill.
+ */
+@Composable
+fun PastillaColor(
+    texto: String,
+    activa: Boolean,
+    color: Color?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (color == null) {
+        Pastilla(texto, activa, onClick, modifier)
+        return
+    }
+    val scheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(100)
+    Row(
+        modifier
+            .clip(shape)
+            .background(if (activa) color.copy(alpha = 0.16f) else scheme.surfaceVariant)
+            .then(if (activa) Modifier.border(1.5.dp, color, shape) else Modifier)
+            .clickable(role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        PuntoColor(color)
+        Text(
+            texto,
+            fontSize = 12.sp,
+            fontWeight = if (activa) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (activa) scheme.onSurface else scheme.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }

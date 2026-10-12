@@ -78,6 +78,7 @@ import com.cdiacal.tasks.ui.components.CifraHero
 import com.cdiacal.tasks.ui.components.FilaPestanas
 import com.cdiacal.tasks.ui.components.IconoInicial
 import com.cdiacal.tasks.ui.components.MiniDatoHero
+import com.cdiacal.tasks.ui.components.PuntoColor
 import com.cdiacal.tasks.ui.components.Pastilla
 import com.cdiacal.tasks.ui.components.TarjetaPanel
 import com.cdiacal.tasks.ui.theme.colorAviso
@@ -331,21 +332,33 @@ private fun Hero(state: TasksUiState, onSearch: () -> Unit, onSettings: () -> Un
 
 @Composable
 private fun GroupHeader(key: GroupKey) {
-    Text(
-        stringResource(
-            when (key) {
-                GroupKey.HIGH -> R.string.group_high
-                GroupKey.MEDIUM -> R.string.group_medium
-                GroupKey.LOW -> R.string.group_low
-                GroupKey.NONE -> R.string.group_none
-                GroupKey.DONE -> R.string.group_done
-            },
-        ),
-        modifier = Modifier.padding(start = 4.dp, top = 8.dp),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    val dot = when (key) {
+        GroupKey.HIGH -> colorGasto()
+        GroupKey.MEDIUM -> colorAviso()
+        GroupKey.LOW -> colorIngreso()
+        GroupKey.NONE, GroupKey.DONE -> null
+    }
+    Row(
+        Modifier.padding(start = 4.dp, top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (dot != null) PuntoColor(dot)
+        Text(
+            stringResource(
+                when (key) {
+                    GroupKey.HIGH -> R.string.group_high
+                    GroupKey.MEDIUM -> R.string.group_medium
+                    GroupKey.LOW -> R.string.group_low
+                    GroupKey.NONE -> R.string.group_none
+                    GroupKey.DONE -> R.string.group_done
+                },
+            ),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Composable
@@ -437,14 +450,17 @@ private fun TaskCard(
                         Text(it.name, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
                     }
                     val priority = task.priorityKind()
-                    if (priority != Priority.NONE) {
-                        Text(
-                            "${priorityMarker(priority)} ${priorityLabel(priority)}",
-                            fontSize = 12.sp,
-                            fontWeight = if (priority == Priority.HIGH) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (priority == Priority.LOW) secondary else MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                        )
+                    priorityColor(priority)?.let { dot ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PuntoColor(dot)
+                            Text(
+                                priorityTag(priority),
+                                fontSize = 12.sp,
+                                fontWeight = if (priority == Priority.HIGH) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (priority == Priority.HIGH) MaterialTheme.colorScheme.onSurface else secondary,
+                                maxLines = 1,
+                            )
+                        }
                     }
                     task.dueDate?.let {
                         Text(

@@ -187,9 +187,9 @@
     <string name="discard_text">Has modificado la tarea y aún no la has guardado.</string>
     <string name="discard_confirm">Descartar</string>
     <string name="discard_keep">Seguir editando</string>
-    <string name="group_high">▲▲▲ Prioridad alta</string>
-    <string name="group_medium">▲▲ Prioridad media</string>
-    <string name="group_low">▲ Prioridad baja</string>
+    <string name="group_high">Prioridad alta</string>
+    <string name="group_medium">Prioridad media</string>
+    <string name="group_low">Prioridad baja</string>
     <string name="group_none">Sin prioridad</string>
     <string name="group_done">Hechas</string>
 </resources>

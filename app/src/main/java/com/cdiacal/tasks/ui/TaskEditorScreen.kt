@@ -61,8 +61,11 @@ import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.BotonSecundario
 import com.cdiacal.tasks.ui.components.CabeceraSimple
 import com.cdiacal.tasks.ui.components.Pastilla
+import com.cdiacal.tasks.ui.components.PastillaColor
 import com.cdiacal.tasks.ui.components.SeccionTarjeta
+import com.cdiacal.tasks.ui.theme.colorAviso
 import com.cdiacal.tasks.ui.theme.colorGasto
+import com.cdiacal.tasks.ui.theme.colorIngreso
 import java.text.DateFormat
 import java.util.Date
 import java.util.TimeZone
@@ -79,12 +82,22 @@ fun priorityLabel(level: Priority): String = stringResource(
     },
 )
 
-/** More triangles = more important; works without relying on colour. */
-fun priorityMarker(level: Priority): String = when (level) {
+/** Traffic-light colour of a priority (green low, amber medium, red high); null for none. */
+@Composable
+fun priorityColor(level: Priority): Color? = when (level) {
+    Priority.NONE -> null
+    Priority.LOW -> colorIngreso()
+    Priority.MEDIUM -> colorAviso()
+    Priority.HIGH -> colorGasto()
+}
+
+/** "Prioridad alta" etc.; empty for no priority. */
+@Composable
+fun priorityTag(level: Priority): String = when (level) {
     Priority.NONE -> ""
-    Priority.LOW -> "▲"
-    Priority.MEDIUM -> "▲▲"
-    Priority.HIGH -> "▲▲▲"
+    Priority.LOW -> stringResource(R.string.group_low)
+    Priority.MEDIUM -> stringResource(R.string.group_medium)
+    Priority.HIGH -> stringResource(R.string.group_high)
 }
 
 @Composable
@@ -283,9 +296,10 @@ fun TaskEditorScreen(
                     Label(stringResource(R.string.priority))
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Priority.entries.forEach { level ->
-                            Pastilla(
-                                texto = listOf(priorityMarker(level), priorityLabel(level)).filter { it.isNotEmpty() }.joinToString(" "),
+                            PastillaColor(
+                                texto = priorityLabel(level),
                                 activa = priority == level.level,
+                                color = priorityColor(level),
                                 onClick = { priority = level.level },
                             )
                         }

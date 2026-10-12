@@ -43,6 +43,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.cdiacal.tasks.MainActivity
 import com.cdiacal.tasks.R
+import com.cdiacal.tasks.data.Priority
 import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.TaskSortStore
 import com.cdiacal.tasks.data.priorityKind
@@ -52,7 +53,6 @@ import com.cdiacal.tasks.data.TaskDatabase
 import com.cdiacal.tasks.ui.DueState
 import com.cdiacal.tasks.ui.dueState
 import com.cdiacal.tasks.ui.formatDate
-import com.cdiacal.tasks.ui.priorityMarker
 import com.cdiacal.tasks.ui.reminderToUtcDateMillis
 
 // Widgets can't use the app theme, so the design system defines fixed colors for them.
@@ -63,6 +63,23 @@ internal val Red = ColorProvider(Color(0xFFF0857A))
 
 // Sorting by priority happens after the query, so fetch enough rows for it to matter.
 private const val WIDGET_TASK_LIMIT = 60
+
+// Priority colours on the navy widget: the widget palette's green and red, plus the dark-mode amber.
+private val Amber = ColorProvider(Color(0xFFE5A93F))
+
+private fun widgetPriorityColor(level: Priority): ColorProvider? = when (level) {
+    Priority.NONE -> null
+    Priority.LOW -> Green
+    Priority.MEDIUM -> Amber
+    Priority.HIGH -> Red
+}
+
+private fun priorityWord(context: Context, level: Priority): String = when (level) {
+    Priority.NONE -> ""
+    Priority.LOW -> context.getString(R.string.priority_low)
+    Priority.MEDIUM -> context.getString(R.string.priority_medium)
+    Priority.HIGH -> context.getString(R.string.priority_high)
+}
 
 private val TaskIdKey = ActionParameters.Key<Long>("task_id")
 private val StepIdKey = ActionParameters.Key<Long>("step_id")
@@ -201,16 +218,26 @@ private fun TaskRow(task: Task, today: Long, steps: List<Subtask>, expanded: Boo
         Spacer(GlanceModifier.width(4.dp))
         Column(GlanceModifier.defaultWeight().clickable(openApp())) {
             Text(task.title, style = TextStyle(color = TextWhite, fontSize = 14.sp), maxLines = 1)
-            val line = listOfNotNull(
-                priorityMarker(task.priorityKind()).takeIf { it.isNotEmpty() },
-                task.dueDate?.let { formatDate(it) },
-            ).joinToString(" · ")
-            if (line.isNotEmpty()) {
-                Text(
-                    line,
-                    style = TextStyle(color = if (overdue) Red else TextDim, fontSize = 11.sp),
-                    maxLines = 1,
-                )
+            val priority = task.priorityKind()
+            val dot = widgetPriorityColor(priority)
+            val dateText = task.dueDate?.let { formatDate(it) }
+            if (dot != null || dateText != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (dot != null) {
+                        Text("● ", style = TextStyle(color = dot, fontSize = 11.sp))
+                        Text(
+                            priorityWord(LocalContext.current, priority) + if (dateText != null) " · " else "",
+                            style = TextStyle(color = TextDim, fontSize = 11.sp),
+                        )
+                    }
+                    if (dateText != null) {
+                        Text(
+                            dateText,
+                            style = TextStyle(color = if (overdue) Red else TextDim, fontSize = 11.sp),
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
         if (steps.isNotEmpty()) {
