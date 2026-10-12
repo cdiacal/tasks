@@ -17,6 +17,8 @@ App Android para controlar tareas pendientes y hábitos. Todo se guarda en el pr
 - Búsqueda por título, notas, categoría y pasos (sin distinguir mayúsculas ni tildes)
 - Filtros por estado y por categoría; categorías con emoji
 - «Deshacer» al completar (también las repetitivas) o eliminar una tarea
+- Gestos en la lista: deslizar a la derecha completa, a la izquierda elimina (ambos con «Deshacer»); «Pasar a mañana» en las vencidas o de hoy
+- Accesos directos al mantener pulsado el icono («Nueva tarea», «Nuevo hábito») y un botón «Nueva tarea» para el panel de ajustes rápidos
 - «Compartir → Tareas» desde cualquier app crea una tarea con el texto compartido
 
 **Hábitos**

@@ -30,6 +30,9 @@ class MainActivity : ComponentActivity() {
     /** Text shared from another app, to prefill the next new task (null for a plain new task). */
     private var sharedDraft by mutableStateOf<Task?>(null)
 
+    /** Incremented each time a launcher shortcut asks for a new habit. */
+    private var newHabitTrigger by mutableIntStateOf(0)
+
     /** Incremented each time a habit notification asks to show the Habits tab. */
     private var openHabitsTrigger by mutableIntStateOf(0)
 
@@ -53,7 +56,7 @@ class MainActivity : ComponentActivity() {
                     )
                     onDispose {}
                 }
-                AppRoot(viewModel, newTaskTrigger, openHabitsTrigger, sharedDraft)
+                AppRoot(viewModel, newTaskTrigger, openHabitsTrigger, sharedDraft, newHabitTrigger)
             }
         }
     }
@@ -73,14 +76,19 @@ class MainActivity : ComponentActivity() {
                 sharedDraft = draft
                 newTaskTrigger++
             }
-        } else if (intent.getBooleanExtra(EXTRA_NEW_TASK, false)) {
+        } else if (intent.action == ACTION_NEW_TASK || intent.getBooleanExtra(EXTRA_NEW_TASK, false)) {
             sharedDraft = null
             newTaskTrigger++
+        } else if (intent.action == ACTION_NEW_HABIT) {
+            newHabitTrigger++
+            openHabitsTrigger++
         }
         if (intent.getBooleanExtra(EXTRA_OPEN_HABITS, false)) openHabitsTrigger++
     }
 
     companion object {
+        const val ACTION_NEW_TASK = "com.cdiacal.tasks.action.NEW_TASK"
+        const val ACTION_NEW_HABIT = "com.cdiacal.tasks.action.NEW_HABIT"
         const val EXTRA_NEW_TASK = "new_task"
         const val EXTRA_OPEN_HABITS = "open_habits"
     }

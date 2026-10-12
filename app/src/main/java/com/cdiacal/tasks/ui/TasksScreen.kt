@@ -13,6 +13,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -82,6 +91,7 @@ import com.cdiacal.tasks.ui.components.PuntoColor
 import com.cdiacal.tasks.ui.components.Pastilla
 import com.cdiacal.tasks.ui.components.TarjetaPanel
 import com.cdiacal.tasks.ui.theme.colorAviso
+import com.cdiacal.tasks.data.postponeToTomorrow
 import com.cdiacal.tasks.ui.theme.colorGasto
 import com.cdiacal.tasks.ui.theme.colorIngreso
 import java.text.DateFormat
@@ -151,6 +161,22 @@ fun TasksScreen(
                 )
                 if (result == SnackbarResult.ActionPerformed) viewModel.undoCompletion(task, steps)
             }
+        }
+    }
+
+    val postponedMessage = stringResource(R.string.task_postponed)
+
+    fun postponeWithUndo(task: Task) {
+        val steps = state.subtasksByTask[task.id].orEmpty()
+        viewModel.saveWithSteps(postponeToTomorrow(task, state.todayUtcMillis), steps)
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            val result = snackbarHostState.showSnackbar(
+                message = postponedMessage,
+                actionLabel = undoLabel,
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.restore(task, steps)
         }
     }
 
@@ -249,6 +275,10 @@ fun TasksScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         val card: @Composable (Task) -> Unit = { task ->
+                          SwipeableTask(
+                            onComplete = { completeWithUndo(task) },
+                            onDelete = { deleteWithUndo(task) },
+                          ) {
                             TaskCard(
                                 task = task,
                                 todayUtcMillis = state.todayUtcMillis,
@@ -262,8 +292,10 @@ fun TasksScreen(
                                     }
                                 },
                                 onToggle = { completeWithUndo(task) },
+                                onPostpone = { postponeWithUndo(task) },
                                 onClick = { editing = task },
                             )
+                          }
                         }
                         if (groups.isEmpty()) {
                             items(state.tasks, key = { it.id }) { task -> card(task) }
@@ -431,6 +463,7 @@ private fun TaskCard(
     onToggleExpanded: () -> Unit,
     onToggleStep: (Subtask) -> Unit,
     onToggle: () -> Unit,
+    onPostpone: () -> Unit,
     onClick: () -> Unit,
 ) {
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
@@ -485,12 +518,25 @@ private fun TaskCard(
                         }
                     }
                     task.dueDate?.let {
-                        Text(
-                            formatDate(it) + (repeatLabel?.let { label -> " · 🔁 $label" } ?: ""),
-                            fontSize = 12.sp,
-                            color = dueColor,
-                            maxLines = 1,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                formatDate(it) + (repeatLabel?.let { label -> " · 🔁 $label" } ?: ""),
+                                fontSize = 12.sp,
+                                color = dueColor,
+                                maxLines = 1,
+                            )
+                            // Overdue or due today: one tap pushes it to tomorrow.
+                            if (!task.isDone && it <= todayUtcMillis) {
+                                Text(
+                                    " · " + stringResource(R.string.postpone_tomorrow),
+                                    modifier = Modifier.clickable(onClick = onPostpone),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
                     }
                     if (steps.isNotEmpty()) {
                         // Tapping the progress line folds / unfolds the checklist.
@@ -536,4 +582,50 @@ private fun TaskCard(
             }
         }
     }
+}
+
+/**
+ * Swipe right to complete, left to delete (both offer "Deshacer"). The row always snaps back:
+ * the list itself updates from the database.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeableTask(onComplete: () -> Unit, onDelete: () -> Unit, content: @Composable () -> Unit) {
+    val complete by rememberUpdatedState(onComplete)
+    val delete by rememberUpdatedState(onDelete)
+    val state = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> complete()
+                SwipeToDismissBoxValue.EndToStart -> delete()
+                SwipeToDismissBoxValue.Settled -> Unit
+            }
+            false
+        },
+    )
+    SwipeToDismissBox(
+        state = state,
+        backgroundContent = {
+            val direction = state.dismissDirection
+            val tint = when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> colorIngreso()
+                SwipeToDismissBoxValue.EndToStart -> colorGasto()
+                SwipeToDismissBoxValue.Settled -> Color.Transparent
+            }
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(tint.copy(alpha = 0.22f))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = if (direction == SwipeToDismissBoxValue.EndToStart) Alignment.CenterEnd else Alignment.CenterStart,
+            ) {
+                when (direction) {
+                    SwipeToDismissBoxValue.StartToEnd -> Icon(Icons.Default.Check, contentDescription = null, tint = tint)
+                    SwipeToDismissBoxValue.EndToStart -> Icon(Icons.Default.Delete, contentDescription = null, tint = tint)
+                    SwipeToDismissBoxValue.Settled -> Unit
+                }
+            }
+        },
+    ) { content() }
 }

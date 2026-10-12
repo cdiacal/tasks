@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_task"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_task"
+        android:shortcutShortLabel="@string/shortcut_new_task"
+        android:shortcutLongLabel="@string/shortcut_new_task">
+        <intent
+            android:action="com.cdiacal.tasks.action.NEW_TASK"
+            android:targetClass="com.cdiacal.tasks.MainActivity"
+            android:targetPackage="com.cdiacal.tasks" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_habit"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_habit"
+        android:shortcutShortLabel="@string/shortcut_new_habit"
+        android:shortcutLongLabel="@string/shortcut_new_habit">
+        <intent
+            android:action="com.cdiacal.tasks.action.NEW_HABIT"
+            android:targetClass="com.cdiacal.tasks.MainActivity"
+            android:targetPackage="com.cdiacal.tasks" />
+    </shortcut>
+</shortcuts>

@@ -19,6 +19,11 @@
     <string name="empty_all">No hay tareas. Pulsa + para añadir una.</string>
     <string name="task_deleted">Tarea eliminada</string>
     <string name="task_completed">Tarea completada</string>
+    <string name="task_postponed">Pospuesta a mañana</string>
+    <string name="postpone_tomorrow">Pasar a mañana</string>
+    <string name="shortcut_new_task">Nueva tarea</string>
+    <string name="shortcut_new_habit">Nuevo hábito</string>
+    <string name="tile_new_task">Nueva tarea</string>
     <string name="undo">Deshacer</string>
     <string name="reminder">Recordatorio</string>
     <string name="no_reminder">Quitar</string>

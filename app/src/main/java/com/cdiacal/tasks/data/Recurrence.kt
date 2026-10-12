@@ -65,3 +65,17 @@ fun completeTask(task: Task, todayUtc: Long, zone: ZoneId = ZoneId.systemDefault
         isDone = false,
     )
 }
+
+/**
+ * [task] pushed to tomorrow (relative to [todayUtc]); its reminder moves by the same number of
+ * days. A task without a due date is returned unchanged.
+ */
+fun postponeToTomorrow(task: Task, todayUtc: Long, zone: ZoneId = ZoneId.systemDefault()): Task {
+    val due = task.dueDate ?: return task
+    val tomorrow = todayUtc + DAY_MILLIS
+    val shiftedDays = (tomorrow - due) / DAY_MILLIS
+    return task.copy(
+        dueDate = tomorrow,
+        reminderAt = task.reminderAt?.let { shiftByDays(it, shiftedDays, zone) },
+    )
+}

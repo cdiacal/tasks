@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,10 +72,22 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HabitsScreen(viewModel: HabitsViewModel = viewModel(), onOpenSettings: () -> Unit = {}) {
+fun HabitsScreen(
+    viewModel: HabitsViewModel = viewModel(),
+    onOpenSettings: () -> Unit = {},
+    newHabitTrigger: Int = 0,
+    onNewHabitConsumed: () -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // null = dialog closed; Habit(name = "") = new habit; otherwise editing.
     var editing by remember { mutableStateOf<Habit?>(null) }
+    // The launcher shortcut «Nuevo hábito» opens the editor straight away.
+    LaunchedEffect(newHabitTrigger) {
+        if (newHabitTrigger > 0) {
+            editing = Habit(name = "")
+            onNewHabitConsumed()
+        }
+    }
     // Habit whose history calendar is open; looked up live so toggling updates it instantly.
     var detailId by remember { mutableStateOf<Long?>(null) }
 

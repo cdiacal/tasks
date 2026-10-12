@@ -37,11 +37,13 @@ fun AppRoot(
     newTaskTrigger: Int,
     openHabitsTrigger: Int = 0,
     sharedDraft: Task? = null,
+    newHabitTrigger: Int = 0,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     // The widget's "+" must land on the Tasks tab, and be consumed once so that coming back
     // to that tab later does not reopen the dialog.
     var handledTrigger by remember { mutableIntStateOf(0) }
+    var handledHabitTrigger by remember { mutableIntStateOf(0) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     // The full-screen task editor covers the bottom bar so a tab switch cannot discard an edit.
     var editorOpen by remember { mutableStateOf(false) }
@@ -66,7 +68,11 @@ fun AppRoot(
                     onEditorVisibleChange = { editorOpen = it },
                 )
             } else if (tab == 1) {
-                HabitsScreen(onOpenSettings = { showSettings = true })
+                HabitsScreen(
+                    onOpenSettings = { showSettings = true },
+                    newHabitTrigger = if (newHabitTrigger > handledHabitTrigger) newHabitTrigger else 0,
+                    onNewHabitConsumed = { handledHabitTrigger = newHabitTrigger },
+                )
             } else {
                 StatsScreen(onOpenSettings = { showSettings = true })
             }
