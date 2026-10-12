@@ -49,6 +49,8 @@
     <string name="widget_name">Tareas pendientes</string>
     <string name="widget_description">Tus tareas pendientes en la pantalla de inicio</string>
     <string name="widget_pending_count">%1$d pendientes</string>
+    <string name="widget_sort_date">↕ Fecha</string>
+    <string name="widget_sort_priority">↕ Prioridad</string>
     <string name="widget_all_done">¡Todo al día!</string>
     <string name="backup_export">Exportar copia de seguridad</string>
     <string name="backup_import">Restaurar copia de seguridad</string>

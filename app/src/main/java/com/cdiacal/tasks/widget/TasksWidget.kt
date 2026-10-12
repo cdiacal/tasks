@@ -44,6 +44,7 @@ import androidx.glance.unit.ColorProvider
 import com.cdiacal.tasks.MainActivity
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.Priority
+import com.cdiacal.tasks.data.TaskSort
 import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.TaskSortStore
 import com.cdiacal.tasks.data.priorityKind
@@ -106,7 +107,7 @@ class TasksWidget : GlanceAppWidget() {
             val expanded by WidgetExpansion.flow(context).collectAsState(WidgetExpansion.expanded(context))
             val stepsByTask = remember(steps) { steps.groupBy { it.taskId } }
             val today = reminderToUtcDateMillis(System.currentTimeMillis())
-            WidgetContent(shown, count, today, stepsByTask, expanded)
+            WidgetContent(shown, count, today, stepsByTask, expanded, sort)
         }
     }
 }
@@ -121,6 +122,15 @@ class CompleteTaskAction : ActionCallback {
         val id = parameters[TaskIdKey] ?: return
         val task = TaskDatabase.get(context).taskDao().getById(id) ?: return
         createRepository(context).toggleDone(task)
+    }
+}
+
+/** Switches the shared order (date / priority); the app and the widget use the same setting. */
+class ToggleSortAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val next = if (TaskSortStore.get(context) == TaskSort.PRIORITY) TaskSort.DATE else TaskSort.PRIORITY
+        TaskSortStore.set(context, next)
+        TasksWidget().updateAll(context)
     }
 }
 
@@ -152,6 +162,7 @@ private fun WidgetContent(
     today: Long,
     stepsByTask: Map<Long, List<Subtask>>,
     expanded: Set<Long>,
+    sort: TaskSort,
 ) {
     val context = LocalContext.current
     val newTask = Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_NEW_TASK, true)
@@ -172,6 +183,19 @@ private fun WidgetContent(
                     context.getString(R.string.widget_pending_count, count),
                     style = TextStyle(color = TextDim, fontSize = 12.sp),
                 )
+            }
+            Box(
+                GlanceModifier
+                    .padding(end = 8.dp)
+                    .clickable(actionRunCallback<ToggleSortAction>()),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(GlanceModifier.background(ImageProvider(R.drawable.widget_pill_background)).padding(horizontal = 10.dp, vertical = 6.dp)) {
+                    Text(
+                        context.getString(if (sort == TaskSort.PRIORITY) R.string.widget_sort_priority else R.string.widget_sort_date),
+                        style = TextStyle(color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                    )
+                }
             }
             Box(
                 GlanceModifier
@@ -204,7 +228,15 @@ private fun WidgetContent(
 @Composable
 private fun TaskRow(task: Task, today: Long, steps: List<Subtask>, expanded: Boolean) {
     val overdue = dueState(task, today) == DueState.OVERDUE
-    Column(GlanceModifier.fillMaxWidth()) {
+    val tint = when (task.priorityKind()) {
+        Priority.LOW -> R.drawable.widget_task_low
+        Priority.MEDIUM -> R.drawable.widget_task_medium
+        Priority.HIGH -> R.drawable.widget_task_high
+        Priority.NONE -> null
+    }
+    val rowModifier = if (tint != null) GlanceModifier.fillMaxWidth().background(ImageProvider(tint)) else GlanceModifier.fillMaxWidth()
+    Column(GlanceModifier.fillMaxWidth().padding(bottom = 4.dp)) {
+    Column(rowModifier) {
     Row(GlanceModifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         // Larger tap target than the visible 20 dp circle.
         Box(
@@ -255,6 +287,7 @@ private fun TaskRow(task: Task, today: Long, steps: List<Subtask>, expanded: Boo
         }
     }
     if (expanded) steps.forEach { StepRow(it) }
+    }
     }
 }
 
