@@ -146,4 +146,12 @@
         <item quantity="one">%d hábito por hacer</item>
         <item quantity="other">%d hábitos por hacer</item>
     </plurals>
+    <string name="priority">Prioridad</string>
+    <string name="priority_none">Ninguna</string>
+    <string name="priority_low">Baja</string>
+    <string name="priority_medium">Media</string>
+    <string name="priority_high">Alta</string>
+    <string name="sort_title">Ordenar por</string>
+    <string name="sort_date">Fecha</string>
+    <string name="sort_priority">Prioridad</string>
 </resources>

@@ -67,10 +67,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.BackupData
 import com.cdiacal.tasks.data.Category
+import com.cdiacal.tasks.data.Priority
 import com.cdiacal.tasks.data.Recurrence
 import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.data.allDone
+import com.cdiacal.tasks.data.TaskSort
+import com.cdiacal.tasks.data.priorityKind
 import com.cdiacal.tasks.data.recurrenceKind
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.CabeceraHero
@@ -213,6 +216,8 @@ fun TasksScreen(
                 onSearch = { searching = true },
                 onAutoBackup = { showAutoBackup = true },
                 onDigest = { showDigest = true },
+                sort = state.sort,
+                onSort = viewModel::setSort,
             )
 
             if (searching) {
@@ -381,6 +386,8 @@ private fun Hero(
     onSearch: () -> Unit,
     onAutoBackup: () -> Unit,
     onDigest: () -> Unit,
+    sort: TaskSort,
+    onSort: (TaskSort) -> Unit,
 ) {
     val today = remember { DateFormat.getDateInstance(DateFormat.LONG).format(Date()) }
     CabeceraHero {
@@ -407,6 +414,8 @@ private fun Hero(
                     onImportBackup,
                     onAutoBackup,
                     onDigest,
+                    sort,
+                    onSort,
                 )
             }
         }
@@ -438,6 +447,8 @@ private fun OptionsMenu(
     onImportBackup: () -> Unit,
     onAutoBackup: () -> Unit,
     onDigest: () -> Unit,
+    sort: TaskSort,
+    onSort: (TaskSort) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     IconButton(onClick = { open = true }) {
@@ -478,6 +489,29 @@ private fun OptionsMenu(
                 },
                 onClick = {
                     onThemeMode(mode)
+                    open = false
+                },
+            )
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+        Text(
+            stringResource(R.string.sort_title),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.5.sp,
+        )
+        TaskSort.entries.forEach { option ->
+            DropdownMenuItem(
+                text = {
+                    Text(stringResource(if (option == TaskSort.DATE) R.string.sort_date else R.string.sort_priority))
+                },
+                trailingIcon = {
+                    if (option == sort) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                },
+                onClick = {
+                    onSort(option)
                     open = false
                 },
             )
@@ -604,6 +638,16 @@ private fun TaskCard(
                 )
                 category?.let {
                     Text(it.name, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1)
+                }
+                val priority = task.priorityKind()
+                if (priority != Priority.NONE) {
+                    Text(
+                        "${priorityMarker(priority)} ${priorityLabel(priority)}",
+                        fontSize = 12.sp,
+                        fontWeight = if (priority == Priority.HIGH) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (priority == Priority.LOW) secondary else MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                    )
                 }
                 task.dueDate?.let {
                     Text(

@@ -44,11 +44,15 @@ import androidx.glance.unit.ColorProvider
 import com.cdiacal.tasks.MainActivity
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.Subtask
+import com.cdiacal.tasks.data.TaskSortStore
+import com.cdiacal.tasks.data.priorityKind
+import com.cdiacal.tasks.data.sortedFor
 import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.data.TaskDatabase
 import com.cdiacal.tasks.ui.DueState
 import com.cdiacal.tasks.ui.dueState
 import com.cdiacal.tasks.ui.formatDate
+import com.cdiacal.tasks.ui.priorityMarker
 import com.cdiacal.tasks.ui.reminderToUtcDateMillis
 
 // Widgets can't use the app theme, so the design system defines fixed colors for them.
@@ -57,7 +61,8 @@ internal val TextDim = ColorProvider(Color(0xFFD2DCEC))
 internal val Green = ColorProvider(Color(0xFF5FD9A0))
 internal val Red = ColorProvider(Color(0xFFF0857A))
 
-private const val WIDGET_TASK_LIMIT = 30
+// Sorting by priority happens after the query, so fetch enough rows for it to matter.
+private const val WIDGET_TASK_LIMIT = 60
 
 private val TaskIdKey = ActionParameters.Key<Long>("task_id")
 private val StepIdKey = ActionParameters.Key<Long>("step_id")
@@ -78,11 +83,13 @@ class TasksWidget : GlanceAppWidget() {
             val tasks by dao.observePending(WIDGET_TASK_LIMIT).collectAsState(initialTasks)
             val count by dao.observePendingCount().collectAsState(initialCount)
             val steps by stepDao.observeAll().collectAsState(initialSteps)
+            val sort by TaskSortStore.flow(context).collectAsState(TaskSortStore.get(context))
+            val shown = remember(tasks, sort) { tasks.sortedFor(sort) }
             // Which tasks are unfolded is observed too, so unfolding redraws at once.
             val expanded by WidgetExpansion.flow(context).collectAsState(WidgetExpansion.expanded(context))
             val stepsByTask = remember(steps) { steps.groupBy { it.taskId } }
             val today = reminderToUtcDateMillis(System.currentTimeMillis())
-            WidgetContent(tasks, count, today, stepsByTask, expanded)
+            WidgetContent(shown, count, today, stepsByTask, expanded)
         }
     }
 }
@@ -194,9 +201,13 @@ private fun TaskRow(task: Task, today: Long, steps: List<Subtask>, expanded: Boo
         Spacer(GlanceModifier.width(4.dp))
         Column(GlanceModifier.defaultWeight().clickable(openApp())) {
             Text(task.title, style = TextStyle(color = TextWhite, fontSize = 14.sp), maxLines = 1)
-            task.dueDate?.let {
+            val line = listOfNotNull(
+                priorityMarker(task.priorityKind()).takeIf { it.isNotEmpty() },
+                task.dueDate?.let { formatDate(it) },
+            ).joinToString(" · ")
+            if (line.isNotEmpty()) {
                 Text(
-                    formatDate(it),
+                    line,
                     style = TextStyle(color = if (overdue) Red else TextDim, fontSize = 11.sp),
                     maxLines = 1,
                 )

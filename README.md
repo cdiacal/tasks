@@ -11,6 +11,7 @@ App Android para controlar tareas pendientes y hábitos. Todo se guarda en el pr
 **Tareas**
 - Crear, editar y eliminar (con «Deshacer»); marcar como hechas
 - Título, notas, fecha límite, categoría, recordatorio con notificación
+- Prioridad (baja, media, alta) y orden por fecha o por prioridad (también en el widget)
 - Repetición (diaria, semanal, mensual, anual): al completarla se reprograma sola
 - Pasos (subtareas) con progreso en la tarjeta
 - Búsqueda por título, notas, categoría y pasos (sin distinguir mayúsculas ni tildes)
