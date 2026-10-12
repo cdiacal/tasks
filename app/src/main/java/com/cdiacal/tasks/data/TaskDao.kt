@@ -27,6 +27,20 @@ interface TaskDao {
     @Query("DELETE FROM tasks")
     suspend fun deleteAll()
 
+    // Live versions of the two widget queries above: the widget keeps collecting these so it
+    // redraws on its own whenever a task changes, instead of relying on a manual refresh.
+    @Query("SELECT COUNT(*) FROM tasks WHERE isDone = 0")
+    fun observePendingCount(): Flow<Int>
+
+    @Query(
+        """
+        SELECT * FROM tasks WHERE isDone = 0
+        ORDER BY CASE WHEN dueDate IS NULL THEN 1 ELSE 0 END ASC, dueDate ASC, createdAt DESC
+        LIMIT :limit
+        """,
+    )
+    fun observePending(limit: Int): Flow<List<Task>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(tasks: List<Task>)
 

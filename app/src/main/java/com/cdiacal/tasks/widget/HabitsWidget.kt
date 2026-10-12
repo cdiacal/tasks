@@ -3,6 +3,9 @@ package com.cdiacal.tasks.widget
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,9 +53,17 @@ private val HabitIdKey = ActionParameters.Key<Long>("habit_id")
 class HabitsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val dao = TaskDatabase.get(context).habitDao()
-        val habits = dao.getAllHabits().sortedWith(compareBy({ it.createdAt }, { it.id }))
-        val state = buildHabitsState(habits, dao.getAllChecks(), LocalDate.now().toEpochDay())
-        provideContent { HabitsWidgetContent(state) }
+        // Read once so the first frame is correct, then observe the database so ticking a habit
+        // (here, in the app or from a notification) redraws the widget by itself.
+        val initialHabits = dao.getAllHabits().sortedWith(compareBy({ it.createdAt }, { it.id }))
+        val initialChecks = dao.getAllChecks()
+        provideContent {
+            val habits by dao.observeHabits().collectAsState(initialHabits)
+            val checks by dao.observeChecks().collectAsState(initialChecks)
+            val today = LocalDate.now().toEpochDay()
+            val state = remember(habits, checks, today) { buildHabitsState(habits, checks, today) }
+            HabitsWidgetContent(state)
+        }
     }
 }
 

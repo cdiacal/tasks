@@ -3,6 +3,8 @@ package com.cdiacal.tasks.widget
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,15 +54,25 @@ internal val TextDim = ColorProvider(Color(0xFFD2DCEC))
 internal val Green = ColorProvider(Color(0xFF5FD9A0))
 internal val Red = ColorProvider(Color(0xFFF0857A))
 
+private const val WIDGET_TASK_LIMIT = 30
+
 private val TaskIdKey = ActionParameters.Key<Long>("task_id")
 
 class TasksWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val dao = TaskDatabase.get(context).taskDao()
-        val tasks = dao.pending(limit = 30)
-        val count = dao.pendingCount()
-        val today = reminderToUtcDateMillis(System.currentTimeMillis())
-        provideContent { WidgetContent(tasks, count, today) }
+        // Read once so the very first frame is already correct (no empty flash)...
+        val initialTasks = dao.pending(limit = WIDGET_TASK_LIMIT)
+        val initialCount = dao.pendingCount()
+        provideContent {
+            // ...then keep observing the database: the content is recomposed by itself on every
+            // change. Data read once outside provideContent would stay stale if Glance reuses
+            // the running session for an update.
+            val tasks by dao.observePending(WIDGET_TASK_LIMIT).collectAsState(initialTasks)
+            val count by dao.observePendingCount().collectAsState(initialCount)
+            val today = reminderToUtcDateMillis(System.currentTimeMillis())
+            WidgetContent(tasks, count, today)
+        }
     }
 }
 
