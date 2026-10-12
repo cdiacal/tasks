@@ -59,8 +59,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if [ -n "$KEYSTORE_B64" ]; then SIGNING="release"; else SIGNING="debug"; fi
           gh release create "apk-${{ github.run_number }}" tareas.apk \
             --prerelease \
             --target "${{ github.sha }}" \
             --title "APK #${{ github.run_number }}" \
-            --notes "Build de la rama ${{ github.ref_name }} (${{ github.sha }}). Firma: ${KEYSTORE_B64:+release}${KEYSTORE_B64:-debug}"
+            --notes "Build de la rama ${{ github.ref_name }} (${{ github.sha }}). Firma: $SIGNING"
