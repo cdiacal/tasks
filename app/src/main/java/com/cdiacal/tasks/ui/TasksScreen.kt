@@ -428,7 +428,11 @@ private fun TaskCard(
         checkmarkColor = MaterialTheme.colorScheme.background,
         uncheckedColor = secondary,
     )
-    TarjetaPanel(Modifier.fillMaxWidth(), onClick = onClick) {
+    TarjetaPanel(
+        Modifier.fillMaxWidth(),
+        onClick = onClick,
+        tint = if (task.isDone) null else priorityColor(task.priorityKind()),
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IconoInicial(

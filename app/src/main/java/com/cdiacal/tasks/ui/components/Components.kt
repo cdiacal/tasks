@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -53,11 +54,14 @@ private val ButtonShape = RoundedCornerShape(12.dp)
 fun TarjetaPanel(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    tint: Color? = null,
     content: @Composable () -> Unit,
 ) {
     val shape = RoundedCornerShape(16.dp)
-    val color = MaterialTheme.colorScheme.surface
-    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    val color = if (tint == null) MaterialTheme.colorScheme.surface
+    else tint.copy(alpha = 0.16f).compositeOver(MaterialTheme.colorScheme.surface)
+    val border = if (tint == null) BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    else BorderStroke(1.5.dp, tint)
     if (onClick != null) {
         Surface(onClick = onClick, modifier = modifier, shape = shape, color = color, border = border) {
             Box(Modifier.padding(16.dp)) { content() }
