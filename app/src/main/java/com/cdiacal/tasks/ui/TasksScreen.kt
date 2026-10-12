@@ -70,6 +70,7 @@ import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.Recurrence
 import com.cdiacal.tasks.data.Subtask
 import com.cdiacal.tasks.data.Task
+import com.cdiacal.tasks.data.allDone
 import com.cdiacal.tasks.data.recurrenceKind
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.CabeceraHero
@@ -255,7 +256,11 @@ fun TasksScreen(
                             steps = state.subtasksByTask[task.id].orEmpty(),
                             expanded = task.id in expandedIds,
                             onToggleExpanded = { viewModel.toggleExpanded(task.id) },
-                            onToggleStep = viewModel::toggleStep,
+                            onToggleStep = { step ->
+                                viewModel.toggleStep(step) { next ->
+                                    showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
+                                }
+                            },
                             onToggle = {
                                 viewModel.toggleDone(task) { next ->
                                     showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
@@ -326,7 +331,11 @@ fun TasksScreen(
                 deleteWithUndo(task)
             },
             onSave = { saved, steps ->
-                viewModel.saveWithSteps(saved, steps)
+                // Complete the task only when this edit is what finished the checklist.
+                val finishedNow = steps.allDone() && !state.subtasksByTask[task.id].orEmpty().allDone()
+                viewModel.saveWithSteps(saved, steps, completeIfAllStepsDone = finishedNow) { next ->
+                    showMessage(context.getString(R.string.task_repeats_next, formatDate(next)))
+                }
                 editing = null
                 val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=

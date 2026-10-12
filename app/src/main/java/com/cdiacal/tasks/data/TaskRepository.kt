@@ -30,7 +30,7 @@ class TaskRepository(
     }
 
     /** Saves the task together with its checklist, replacing any previous steps, atomically. */
-    suspend fun saveWithSubtasks(task: Task, steps: List<Subtask>) {
+    suspend fun saveWithSubtasks(task: Task, steps: List<Subtask>, completeIfAllStepsDone: Boolean = false): Long? {
         val id = db.withTransaction {
             val id = dao.upsert(task)
             subtaskDao.deleteForTask(id)
@@ -39,13 +39,25 @@ class TaskRepository(
         }
         reminders.sync(task.copy(id = id))
         onTasksChanged()
+        // The last step was ticked in the editor: complete the task like the checkbox would.
+        return if (completeIfAllStepsDone && shouldCompleteTask(task, steps)) toggleDone(task.copy(id = id)) else null
     }
 
-    /** Ticks or unticks one step of a checklist. */
-    suspend fun toggleStep(stepId: Long) {
-        val step = subtaskDao.getById(stepId) ?: return
+    /**
+     * Ticks or unticks one step. Ticking the last open step completes the task (a repeating task is
+     * rescheduled and its steps start over); the new due date is returned in that case.
+     */
+    suspend fun toggleStep(stepId: Long): Long? {
+        val step = subtaskDao.getById(stepId) ?: return null
         subtaskDao.setDone(stepId, !step.isDone)
+        val task = dao.getById(step.taskId)
+        val completed = if (task != null && shouldCompleteTask(task, subtaskDao.forTask(step.taskId))) {
+            toggleDone(task)
+        } else {
+            null
+        }
         onTasksChanged()
+        return completed
     }
 
     /**

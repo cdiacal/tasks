@@ -172,10 +172,19 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleExpanded(taskId: Long) = expanded.update { if (taskId in it) it - taskId else it + taskId }
 
-    fun toggleStep(step: Subtask) = viewModelScope.launch { repository.toggleStep(step.id) }
+    /** [onRescheduled] gets the next due date when ticking this step completed a repeating task. */
+    fun toggleStep(step: Subtask, onRescheduled: (Long) -> Unit = {}) = viewModelScope.launch {
+        repository.toggleStep(step.id)?.let(onRescheduled)
+    }
 
-    fun saveWithSteps(task: Task, steps: List<Subtask>) =
-        viewModelScope.launch { repository.saveWithSubtasks(task, steps) }
+    fun saveWithSteps(
+        task: Task,
+        steps: List<Subtask>,
+        completeIfAllStepsDone: Boolean = false,
+        onRescheduled: (Long) -> Unit = {},
+    ) = viewModelScope.launch {
+        repository.saveWithSubtasks(task, steps, completeIfAllStepsDone)?.let(onRescheduled)
+    }
 
     /** Completes/reopens a task. For a repeating task, [onRescheduled] gets its next due date. */
     fun toggleDone(task: Task, onRescheduled: (Long) -> Unit = {}) = viewModelScope.launch {
