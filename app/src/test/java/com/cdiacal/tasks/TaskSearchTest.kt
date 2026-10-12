@@ -16,7 +16,7 @@ class TaskSearchTest {
     @Test fun ignoresCaseAndAccents() {
         assertTrue(matchesQuery("cafe", "Comprar CAFÉ para la oficina"))
         assertTrue(matchesQuery("CAFÉ", "comprar cafe"))
-        assertEquals("nino anio", normalizeForSearch("Niño AÑO"))
+        assertEquals("nino ano", normalizeForSearch("Niño AÑO"))
     }
 
     @Test fun everyWordMustAppearInAnyOrder() {
