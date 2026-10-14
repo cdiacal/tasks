@@ -33,6 +33,9 @@ class MainActivity : ComponentActivity() {
     /** Incremented each time a launcher shortcut asks for a new habit. */
     private var newHabitTrigger by mutableIntStateOf(0)
 
+    /** Incremented each time the calendar notification asks to open the import screen. */
+    private var openCalendarTrigger by mutableIntStateOf(0)
+
     /** Incremented each time a habit notification asks to show the Habits tab. */
     private var openHabitsTrigger by mutableIntStateOf(0)
 
@@ -56,7 +59,7 @@ class MainActivity : ComponentActivity() {
                     )
                     onDispose {}
                 }
-                AppRoot(viewModel, newTaskTrigger, openHabitsTrigger, sharedDraft, newHabitTrigger)
+                AppRoot(viewModel, newTaskTrigger, openHabitsTrigger, sharedDraft, newHabitTrigger, openCalendarTrigger)
             }
         }
     }
@@ -79,6 +82,8 @@ class MainActivity : ComponentActivity() {
         } else if (intent.action == ACTION_NEW_TASK || intent.getBooleanExtra(EXTRA_NEW_TASK, false)) {
             sharedDraft = null
             newTaskTrigger++
+        } else if (intent.getBooleanExtra(EXTRA_OPEN_CALENDAR_IMPORT, false)) {
+            openCalendarTrigger++
         } else if (intent.action == ACTION_NEW_HABIT) {
             newHabitTrigger++
             openHabitsTrigger++
@@ -91,5 +96,6 @@ class MainActivity : ComponentActivity() {
         const val ACTION_NEW_HABIT = "com.cdiacal.tasks.action.NEW_HABIT"
         const val EXTRA_NEW_TASK = "new_task"
         const val EXTRA_OPEN_HABITS = "open_habits"
+        const val EXTRA_OPEN_CALENDAR_IMPORT = "open_calendar_import"
     }
 }

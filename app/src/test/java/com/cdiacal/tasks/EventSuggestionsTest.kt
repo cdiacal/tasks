@@ -96,4 +96,21 @@ class EventSuggestionsTest {
         val cutoff = today.minusDays(60).atStartOfDay(zone).toInstant().toEpochMilli()
         assertEquals(setOf(recent), pruneImported(setOf(old, recent, "garbage"), cutoff))
     }
+
+    @Test fun candidatesSkipHiddenImportedAnnouncedAndPlainEvents() {
+        val gift = event("Cumple de Ana", id = 1)
+        val imported = event("Pagar alquiler", id = 2)
+        val announced = event("Renovar seguro", id = 3)
+        val meeting = event("Reunión", id = 4)
+        val hiddenCal = event("Cumple de Luis", id = 5).copy(calendarName = "Trabajo")
+        val result = com.cdiacal.tasks.calendar.newTaskCandidates(
+            events = listOf(gift, imported, announced, meeting, hiddenCal, gift),
+            hidden = setOf("Trabajo"),
+            imported = setOf(eventKey(imported)),
+            notified = setOf(eventKey(announced)),
+            today = today,
+            zone = zone,
+        )
+        assertEquals(listOf("Comprar regalo: Cumple de Ana"), result.map { it.second.title })
+    }
 }

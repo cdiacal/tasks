@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +39,7 @@ fun AppRoot(
     openHabitsTrigger: Int = 0,
     sharedDraft: Task? = null,
     newHabitTrigger: Int = 0,
+    openCalendarTrigger: Int = 0,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     // The widget's "+" must land on the Tasks tab, and be consumed once so that coming back
@@ -50,6 +52,10 @@ fun AppRoot(
     var editorOpen by remember { mutableStateOf(false) }
     LaunchedEffect(newTaskTrigger) {
         if (newTaskTrigger > handledTrigger) tab = 0
+    }
+
+    LaunchedEffect(openCalendarTrigger) {
+        if (openCalendarTrigger > 0) showCalendar = true
     }
 
     LaunchedEffect(openHabitsTrigger) {
@@ -68,6 +74,8 @@ fun AppRoot(
                     onOpenSettings = { showSettings = true },
                     onEditorVisibleChange = { editorOpen = it },
                 )
+            } else if (tab == 2) {
+                TaskCalendarScreen(tasksViewModel, onOpenSettings = { showSettings = true })
             } else if (tab == 1) {
                 HabitsScreen(
                     onOpenSettings = { showSettings = true },
@@ -105,6 +113,13 @@ fun AppRoot(
             NavigationBarItem(
                 selected = tab == 2,
                 onClick = { tab = 2 },
+                icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
+                label = { Text(stringResource(R.string.tab_calendar)) },
+                colors = colors,
+            )
+            NavigationBarItem(
+                selected = tab == 3,
+                onClick = { tab = 3 },
                 icon = { Icon(Icons.Default.BarChart, contentDescription = null) },
                 label = { Text(stringResource(R.string.tab_stats)) },
                 colors = colors,

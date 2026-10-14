@@ -106,7 +106,8 @@ object BackupJson {
                                 .put("daysMask", h.daysMask)
                                 .put("createdAt", h.createdAt)
                                 .put("reminderMinutes", h.reminderMinutes ?: JSONObject.NULL)
-                                .put("slotsMask", h.slotsMask),
+                                .put("slotsMask", h.slotsMask)
+                                .put("slotReminders", h.slotReminders),
                         )
                     }
                 },
@@ -155,6 +156,7 @@ object BackupJson {
                         createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                         reminderMinutes = o.longOrNull("reminderMinutes")?.toInt(),
                         slotsMask = o.optInt("slotsMask", 0),
+                        slotReminders = o.optString("slotReminders", ""),
                     )
                 }
             } else {

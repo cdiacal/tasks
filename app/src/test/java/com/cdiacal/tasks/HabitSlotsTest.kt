@@ -6,7 +6,11 @@ import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitCheck
 import com.cdiacal.tasks.habits.buildHabitsState
 import com.cdiacal.tasks.habits.completeDays
+import com.cdiacal.tasks.habits.encodeSlotReminders
 import com.cdiacal.tasks.habits.isDayComplete
+import com.cdiacal.tasks.habits.isSlotDone
+import com.cdiacal.tasks.habits.parseSlotReminders
+import com.cdiacal.tasks.habits.reminderTimes
 import com.cdiacal.tasks.habits.nextPendingSlot
 import com.cdiacal.tasks.habits.slotsOf
 import java.time.LocalDate
@@ -75,5 +79,35 @@ class HabitSlotsTest {
         assertEquals(listOf(true, false), item.slots.map { it.done })
         assertEquals(1, item.streaks.current) // yesterday was complete, today still open
         assertTrue(item.week.last().partial)
+    }
+
+    @Test fun slotRemindersRoundTripAndSkipGarbage() {
+        val times = mapOf(DaySlot.MORNING.value to 480, DaySlot.NIGHT.value to 1260)
+        assertEquals("1=480;3=1260", encodeSlotReminders(times))
+        assertEquals(times, parseSlotReminders("1=480;3=1260"))
+        assertEquals(mapOf(2 to 840), parseSlotReminders("x;9=100;2=840;3=99999;1=a"))
+        assertEquals(emptyMap<Int, Int>(), parseSlotReminders(""))
+    }
+
+    @Test fun plainHabitHasOneReminderWithSlotZero() {
+        val habit = Habit(id = 1, name = "h", reminderMinutes = 540)
+        assertEquals(listOf(0 to 540), reminderTimes(habit))
+        assertEquals(emptyList<Pair<Int, Int>>(), reminderTimes(Habit(id = 2, name = "h")))
+    }
+
+    @Test fun slottedHabitHasOneReminderPerChosenSlotWithATime() {
+        val habit = Habit(
+            id = 1, name = "h", reminderMinutes = 540, slotsMask = morningNight,
+            slotReminders = "1=480;2=840;3=1260",
+        )
+        // The single reminder is ignored, and the noon time is not used: noon is not a chosen slot.
+        assertEquals(listOf(1 to 480, 3 to 1260), reminderTimes(habit))
+        assertEquals(listOf(3 to 1260), reminderTimes(habit.copy(slotReminders = "3=1260")))
+    }
+
+    @Test fun wholeDayTickCoversEverySlot() {
+        assertTrue(isSlotDone(2, setOf(0)))
+        assertFalse(isSlotDone(2, setOf(1)))
+        assertTrue(isSlotDone(2, setOf(2)))
     }
 }

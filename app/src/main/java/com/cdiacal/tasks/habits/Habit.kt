@@ -17,6 +17,8 @@ data class Habit(
     val reminderMinutes: Int? = null,
     /** Bit i set = the habit is done in [DaySlot] i+1 (morning, noon, night); 0 = once a day, any time. */
     val slotsMask: Int = 0,
+    /** Reminder time of each day slot, as "slot=minutes;slot=minutes" (see [parseSlotReminders]). */
+    val slotReminders: String = "",
 )
 
 /**

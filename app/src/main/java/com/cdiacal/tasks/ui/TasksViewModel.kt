@@ -32,6 +32,8 @@ import kotlinx.coroutines.withContext
 
 data class TasksUiState(
     val tasks: List<Task> = emptyList(),
+    /** Every task, unfiltered (the calendar view). */
+    val allTasks: List<Task> = emptyList(),
     val filter: TaskFilter = TaskFilter.PENDING,
     val categories: List<Category> = emptyList(),
     /** Category used to filter the list, or null for all. */
@@ -84,6 +86,7 @@ class TasksViewModel(application: Application) : AndroidViewModel(application) {
             }.sortedFor(sort)
             TasksUiState(
                 tasks = visible,
+                allTasks = src.tasks,
                 sort = sort,
                 query = q,
                 filter = f,

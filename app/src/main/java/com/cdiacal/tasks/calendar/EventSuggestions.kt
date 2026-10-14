@@ -77,3 +77,22 @@ fun suggestionToTask(event: CalendarEvent, suggestion: TaskSuggestion): Task = T
     notes = "Del calendario (${event.calendarName}): ${event.title.trim()}".trim(),
     dueDate = suggestion.due.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
 )
+
+/**
+ * Events worth telling the user about: visible calendars only, that look like something to do
+ * and that were neither imported nor already announced. Each event appears once.
+ */
+fun newTaskCandidates(
+    events: List<CalendarEvent>,
+    hidden: Set<String>,
+    imported: Set<String>,
+    notified: Set<String>,
+    today: LocalDate,
+    zone: ZoneId = ZoneId.systemDefault(),
+): List<Pair<CalendarEvent, TaskSuggestion>> =
+    events
+        .filter { it.calendarName !in hidden }
+        .distinctBy { eventKey(it) }
+        .filter { eventKey(it) !in imported && eventKey(it) !in notified }
+        .map { it to suggestTask(it, today, zone) }
+        .filter { it.second.preselected }

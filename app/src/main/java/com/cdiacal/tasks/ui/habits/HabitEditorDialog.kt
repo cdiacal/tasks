@@ -26,7 +26,11 @@ import androidx.compose.ui.unit.dp
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.habits.DaySlot
 import com.cdiacal.tasks.habits.Habit
+import com.cdiacal.tasks.habits.defaultSlotMinutes
+import com.cdiacal.tasks.habits.encodeSlotReminders
+import com.cdiacal.tasks.habits.parseSlotReminders
 import com.cdiacal.tasks.habits.slotEmoji
+import com.cdiacal.tasks.habits.slotsOf
 import com.cdiacal.tasks.habits.formatMinutes
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.BotonSecundario
@@ -61,7 +65,9 @@ fun HabitEditorDialog(
     var mask by remember { mutableStateOf(initial.daysMask) }
     var slots by remember { mutableStateOf(initial.slotsMask) }
     var reminder by remember { mutableStateOf(initial.reminderMinutes) }
-    var showTime by remember { mutableStateOf(false) }
+    // Which reminder the time picker is editing: 0 = the single one, 1..3 = a part of the day, null = closed.
+    var picker by remember { mutableStateOf<Int?>(null) }
+    var slotTimes by remember { mutableStateOf(parseSlotReminders(initial.slotReminders)) }
     val isNew = initial.id == 0L
 
     AlertDialog(
@@ -122,17 +128,38 @@ fun HabitEditorDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BotonSecundario(
-                        texto = reminder?.let { "⏰ ${formatMinutes(it)}" } ?: stringResource(R.string.habit_daily_reminder),
-                        onClick = { showTime = true },
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    if (reminder != null) {
-                        TextButton(onClick = { reminder = null }) { Text(stringResource(R.string.no_reminder)) }
+                if (slots == 0) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BotonSecundario(
+                            texto = reminder?.let { "⏰ ${formatMinutes(it)}" } ?: stringResource(R.string.habit_daily_reminder),
+                            onClick = { picker = 0 },
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (reminder != null) {
+                            TextButton(onClick = { reminder = null }) { Text(stringResource(R.string.no_reminder)) }
+                        }
+                    }
+                } else {
+                    // One reminder per chosen part of the day.
+                    slotsOf(slots).forEach { slot ->
+                        val time = slotTimes[slot.value]
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            BotonSecundario(
+                                texto = slotEmoji(slot) + " " + stringResource(slotLabelRes(slot)) + ": " +
+                                    (time?.let { "⏰ ${formatMinutes(it)}" } ?: stringResource(R.string.no_reminder)),
+                                onClick = { picker = slot.value },
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            if (time != null) {
+                                TextButton(onClick = { slotTimes = slotTimes - slot.value }) { Text(stringResource(R.string.no_reminder)) }
+                            }
+                        }
                     }
                 }
                 if (!isNew) {
@@ -153,7 +180,11 @@ fun HabitEditorDialog(
                 // A habit needs a name and at least one scheduled weekday.
                 enabled = name.isNotBlank() && mask != 0,
                 onClick = { onSave(
-                        initial.copy(name = name.trim(), emoji = emoji.trim(), daysMask = mask, slotsMask = slots, reminderMinutes = reminder),
+                        initial.copy(name = name.trim(), emoji = emoji.trim(), daysMask = mask,
+                            slotsMask = slots,
+                            reminderMinutes = reminder,
+                            slotReminders = encodeSlotReminders(slotTimes.filterKeys { k -> slotsOf(slots).any { it.value == k } }),
+                        ),
                     ) },
             )
         },
@@ -162,27 +193,31 @@ fun HabitEditorDialog(
         },
     )
 
-    if (showTime) {
+    picker?.let { target ->
+        val slot = DaySlot.entries.firstOrNull { it.value == target }
+        val current = if (target == 0) reminder else slotTimes[target]
+        val initialTime = current ?: (slot?.let(::defaultSlotMinutes) ?: DEFAULT_REMINDER)
         val time = rememberTimePickerState(
-            initialHour = (reminder ?: DEFAULT_REMINDER) / 60,
-            initialMinute = (reminder ?: DEFAULT_REMINDER) % 60,
+            initialHour = initialTime / 60,
+            initialMinute = initialTime % 60,
             is24Hour = true,
         )
         AlertDialog(
-            onDismissRequest = { showTime = false },
+            onDismissRequest = { picker = null },
             title = { Text(stringResource(R.string.pick_time)) },
             text = { TimePicker(state = time) },
             confirmButton = {
                 BotonPrincipal(
                     texto = stringResource(R.string.save),
                     onClick = {
-                        reminder = time.hour * 60 + time.minute
-                        showTime = false
+                        val minutes = time.hour * 60 + time.minute
+                        if (target == 0) reminder = minutes else slotTimes = slotTimes + (target to minutes)
+                        picker = null
                     },
                 )
             },
             dismissButton = {
-                BotonSecundario(texto = stringResource(R.string.cancel), onClick = { showTime = false })
+                BotonSecundario(texto = stringResource(R.string.cancel), onClick = { picker = null })
             },
         )
     }

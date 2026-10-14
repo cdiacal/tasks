@@ -3,6 +3,7 @@ package com.cdiacal.tasks.reminders
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.cdiacal.tasks.calendar.CalendarWatchScheduler
 import com.cdiacal.tasks.data.TaskDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,7 @@ class BootReceiver : BroadcastReceiver() {
                 val habitScheduler = HabitReminderScheduler(context)
                 db.habitDao().getAllHabits().forEach(habitScheduler::sync)
                 DigestScheduler(context).sync()
+                CalendarWatchScheduler(context).sync()
             } finally {
                 pending.finish()
             }

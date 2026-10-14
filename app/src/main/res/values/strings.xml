@@ -68,6 +68,10 @@
     <string name="backup_restore_confirm">Restaurar</string>
     <string name="backup_restored">Copia restaurada</string>
     <string name="tab_tasks">Tareas</string>
+    <string name="tab_calendar">Calendario</string>
+    <string name="calendar_tab_title">Calendario</string>
+    <string name="calendar_tab_subtitle">Tus tareas por fecha de vencimiento</string>
+    <string name="calendar_tab_empty_day">No hay tareas para este día.</string>
     <string name="tab_habits">Hábitos</string>
     <string name="tab_stats">Estadísticas</string>
     <string name="stats_title">Estadísticas</string>
@@ -198,6 +202,14 @@
     <string name="calendar_allow">Permitir acceso</string>
     <string name="calendar_loading">Cargando…</string>
     <string name="calendar_empty">No hay eventos en los próximos días.</string>
+    <string name="calendar_watch_switch">Avisarme de eventos nuevos que parezcan tareas</string>
+    <string name="calendar_watch_desc">Cada día a las 8:30 revisa los próximos 30 días del calendario y, si hay eventos nuevos que parecen tareas, te lo avisa. Tú decides si los importas.</string>
+    <string name="calendar_watch_channel">Eventos del calendario</string>
+    <string name="calendar_watch_title">Eventos que parecen tareas</string>
+    <plurals name="calendar_watch_summary">
+        <item quantity="one">%d evento nuevo del calendario parece una tarea</item>
+        <item quantity="other">%d eventos nuevos del calendario parecen tareas</item>
+    </plurals>
     <string name="calendar_count">%1$d eventos</string>
     <string name="calendar_select_suggested">Sugeridas</string>
     <string name="calendar_select_none">Ninguna</string>

@@ -61,6 +61,7 @@ import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitItem
 import com.cdiacal.tasks.habits.HabitsState
 import com.cdiacal.tasks.habits.formatMinutes
+import com.cdiacal.tasks.habits.reminderTimes
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.CabeceraHero
 import com.cdiacal.tasks.ui.components.CifraHero
@@ -158,7 +159,7 @@ fun HabitsScreen(
                 val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                     PackageManager.PERMISSION_GRANTED
-                if (it.reminderMinutes != null && needsPermission) {
+                if (reminderTimes(it).isNotEmpty() && needsPermission) {
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             },
@@ -258,8 +259,13 @@ private fun HabitCard(item: HabitItem, onToggle: (Long) -> Unit, onToggleSlot: (
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(subtitle, fontSize = 12.sp, color = secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    item.habit.reminderMinutes?.let {
-                        Text("⏰ ${formatMinutes(it)}", fontSize = 12.sp, color = secondary, maxLines = 1)
+                    reminderTimes(item.habit).takeIf { it.isNotEmpty() }?.let { times ->
+                        Text(
+                            "⏰ " + times.joinToString(" · ") { formatMinutes(it.second) },
+                            fontSize = 12.sp,
+                            color = secondary,
+                            maxLines = 1,
+                        )
                     }
                 }
                 if (item.slots.isEmpty()) {

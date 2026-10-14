@@ -26,10 +26,14 @@ App Android para controlar tareas pendientes y hábitos. Todo se guarda en el pr
 - Propone qué eventos son tareas: cumpleaños/aniversarios → «Comprar regalo» 3 días antes; verbos y
   «recordatorio»/«fecha límite» → tarea; exámenes/entrevistas → «Preparar» el día anterior; el resto, sin marcar
 - Tú marcas lo que quieras y se importa con su fecha; lo ya importado no se repite; se recuerda qué calendarios ocultaste
+- Opcional: cada día a las 8:30 avisa de eventos nuevos que parecen tareas (y solo de los que no te había avisado)
+
+**Calendario de tareas:** pestaña con el mes completo, puntos por día (rojo si hay vencidas, color de la prioridad
+si no) y la lista de tareas del día que toques, con su casilla para completarlas.
 
 **Hábitos**
 - Días de la semana en que se hace, racha actual y mejor racha, vista de 7 días
-- Momentos del día (mañana, mediodía, noche): un hábito puede hacerse varias veces al día; el día cuenta como cumplido cuando están todos
+- Momentos del día (mañana, mediodía, noche): un hábito puede hacerse varias veces al día; el día cuenta como cumplido cuando están todos, y cada momento puede tener su propio recordatorio
 - Calendario mensual con el historial (los días pasados se pueden marcar o desmarcar)
 - Recordatorio diario opcional (solo los días que tocan; no avisa si ya está hecho; botón «Hecho»)
 

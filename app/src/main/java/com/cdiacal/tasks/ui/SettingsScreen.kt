@@ -47,6 +47,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cdiacal.tasks.R
+import com.cdiacal.tasks.calendar.CalendarPrefs
+import com.cdiacal.tasks.calendar.CalendarReader
+import com.cdiacal.tasks.calendar.CalendarWatchScheduler
 import com.cdiacal.tasks.data.BackupData
 import com.cdiacal.tasks.data.Category
 import com.cdiacal.tasks.data.TaskSort
@@ -102,6 +105,20 @@ fun SettingsScreen(viewModel: TasksViewModel, onBack: () -> Unit, onOpenCalendar
             PackageManager.PERMISSION_GRANTED
         if (missing) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
+
+    var watchOn by remember { mutableStateOf(CalendarPrefs.watchEnabled(context)) }
+    fun setWatch(on: Boolean) {
+        CalendarPrefs.setWatchEnabled(context, on)
+        CalendarWatchScheduler(context).sync()
+        watchOn = on
+    }
+    val calendarPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            setWatch(true)
+            requestNotificationPermissionIfNeeded()
+        }
+    }
+
 
     // Backups go through the system file picker, so no storage permission is needed.
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -252,6 +269,25 @@ fun SettingsScreen(viewModel: TasksViewModel, onBack: () -> Unit, onOpenCalendar
                         titulo = stringResource(R.string.calendar_row),
                         detalle = stringResource(R.string.calendar_row_detail),
                         onClick = onOpenCalendar,
+                    )
+                    Fila(
+                        titulo = stringResource(R.string.calendar_watch_switch),
+                        detalle = stringResource(R.string.calendar_watch_desc),
+                        derecha = {
+                            Switch(
+                                checked = watchOn,
+                                onCheckedChange = { on ->
+                                    if (!on) {
+                                        setWatch(false)
+                                    } else if (CalendarReader.hasPermission(context)) {
+                                        setWatch(true)
+                                        requestNotificationPermissionIfNeeded()
+                                    } else {
+                                        calendarPermission.launch(Manifest.permission.READ_CALENDAR)
+                                    }
+                                },
+                            )
+                        },
                     )
                 }
 
