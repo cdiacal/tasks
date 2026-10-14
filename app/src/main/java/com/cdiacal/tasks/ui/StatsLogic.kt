@@ -4,6 +4,7 @@ import com.cdiacal.tasks.data.Task
 import com.cdiacal.tasks.data.TaskCompletion
 import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitCheck
+import com.cdiacal.tasks.habits.completeDays
 import com.cdiacal.tasks.habits.computeStreaks
 import com.cdiacal.tasks.habits.dayIndex
 import com.cdiacal.tasks.habits.historyStart
@@ -75,14 +76,14 @@ fun buildStats(
     val taskWeeks = weeklyCounts(days, today)
     val taskStats = computeStats(tasks, todayUtcMillis)
 
-    val doneByHabit = checks.groupBy({ it.habitId }, { it.epochDay }).mapValues { it.value.toSet() }
+    val checksByHabit = checks.groupBy { it.habitId }
     val firstWeek = weekStart(today) - 7L * (STATS_WEEKS - 1)
     val weekDone = IntArray(STATS_WEEKS)
     val weekScheduled = IntArray(STATS_WEEKS)
     var done30 = 0
     var scheduled30 = 0
     val rows = habits.map { habit ->
-        val done = doneByHabit[habit.id].orEmpty()
+        val done = completeDays(habit.slotsMask, checksByHabit[habit.id].orEmpty())
         val start = Instant.ofEpochMilli(habit.createdAt).atZone(zone).toLocalDate().toEpochDay()
         for (w in 0 until STATS_WEEKS) {
             val from = firstWeek + 7L * w

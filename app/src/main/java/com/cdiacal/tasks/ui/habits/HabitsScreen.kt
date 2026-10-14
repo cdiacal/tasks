@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -53,6 +55,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cdiacal.tasks.R
 import com.cdiacal.tasks.habits.DayCell
+import com.cdiacal.tasks.habits.SlotCell
+import com.cdiacal.tasks.habits.slotEmoji
 import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitItem
 import com.cdiacal.tasks.habits.HabitsState
@@ -121,6 +125,7 @@ fun HabitsScreen(
                         HabitCard(
                             item = item,
                             onToggle = { day -> viewModel.toggle(item.habit.id, day) },
+                            onToggleSlot = { slot -> viewModel.toggleSlot(item.habit.id, state.today, slot) },
                             onClick = { detailId = item.habit.id },
                         )
                     }
@@ -191,7 +196,7 @@ private fun HabitsHero(state: HabitsState, onSettings: () -> Unit) {
                 color = Color.White.copy(alpha = 0.82f),
                 fontSize = 11.5.sp,
             )
-            CifraHero("${state.todayDone}/${state.todayTotal}")
+            CifraHero("${state.todaySlotsDone}/${state.todaySlotsTotal}")
             Row(
                 Modifier.fillMaxWidth().padding(top = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -224,7 +229,7 @@ private fun EmptyHabits() {
 }
 
 @Composable
-private fun HabitCard(item: HabitItem, onToggle: (Long) -> Unit, onClick: () -> Unit) {
+private fun HabitCard(item: HabitItem, onToggle: (Long) -> Unit, onToggleSlot: (Int) -> Unit, onClick: () -> Unit) {
     val context = LocalContext.current
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     val streak = item.streaks
@@ -257,7 +262,16 @@ private fun HabitCard(item: HabitItem, onToggle: (Long) -> Unit, onClick: () -> 
                         Text("⏰ ${formatMinutes(it)}", fontSize = 12.sp, color = secondary, maxLines = 1)
                     }
                 }
-                DayCheck(cell = todayCell, size = 36.dp, onClick = { onToggle(todayCell.epochDay) })
+                if (item.slots.isEmpty()) {
+                    DayCheck(cell = todayCell, size = 36.dp, onClick = { onToggle(todayCell.epochDay) })
+                } else {
+                    // A habit done several times a day: one tick per part of the day.
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        item.slots.forEach { cell ->
+                            SlotCheck(cell, enabled = todayCell.scheduled, onClick = { onToggleSlot(cell.slot.value) })
+                        }
+                    }
+                }
             }
             Row(Modifier.fillMaxWidth()) {
                 item.week.forEach { cell ->
@@ -280,6 +294,26 @@ private fun HabitCard(item: HabitItem, onToggle: (Long) -> Unit, onClick: () -> 
     }
 }
 
+/** One part of today (morning / noon / night): its emoji, green behind it when done. */
+@Composable
+private fun SlotCheck(cell: SlotCell, enabled: Boolean, onClick: () -> Unit) {
+    val label = stringResource(slotLabelRes(cell.slot))
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .then(
+                if (cell.done) Modifier.background(colorIngreso())
+                else Modifier.border(1.5.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape),
+            )
+            .semantics { contentDescription = label }
+            .clickable(enabled = enabled, role = Role.Checkbox, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(slotEmoji(cell.slot), fontSize = 16.sp)
+    }
+}
+
 private fun dayInitial(epochDay: Long): String =
     LocalDate.ofEpochDay(epochDay).dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.getDefault()).uppercase()
 
@@ -292,6 +326,7 @@ private fun DayCheck(cell: DayCell, size: Dp, onClick: () -> Unit) {
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     val ring = when {
         cell.isToday && !cell.done -> Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+        cell.partial -> Modifier.border(1.5.dp, colorIngreso(), CircleShape)
         !cell.done && cell.scheduled -> Modifier.border(1.5.dp, secondary.copy(alpha = 0.5f), CircleShape)
         else -> Modifier
     }
@@ -299,7 +334,7 @@ private fun DayCheck(cell: DayCell, size: Dp, onClick: () -> Unit) {
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .then(if (cell.done) Modifier.background(colorIngreso()) else Modifier)
+            .then(if (cell.done) Modifier.background(colorIngreso()) else if (cell.partial) Modifier.background(colorIngreso().copy(alpha = 0.3f)) else Modifier)
             .then(ring)
             .clickable(enabled = cell.scheduled, role = Role.Checkbox, onClick = onClick),
         contentAlignment = Alignment.Center,

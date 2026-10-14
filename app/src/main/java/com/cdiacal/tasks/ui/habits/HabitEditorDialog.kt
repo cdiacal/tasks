@@ -24,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.cdiacal.tasks.R
+import com.cdiacal.tasks.habits.DaySlot
 import com.cdiacal.tasks.habits.Habit
+import com.cdiacal.tasks.habits.slotEmoji
 import com.cdiacal.tasks.habits.formatMinutes
 import com.cdiacal.tasks.ui.components.BotonPrincipal
 import com.cdiacal.tasks.ui.components.BotonSecundario
@@ -33,6 +35,13 @@ import com.cdiacal.tasks.ui.theme.colorGasto
 import java.time.DayOfWeek
 import java.time.format.TextStyle
 import java.util.Locale
+
+/** Name of a part of the day, shared by the editor and the habit cards. */
+fun slotLabelRes(slot: DaySlot): Int = when (slot) {
+    DaySlot.MORNING -> R.string.slot_morning
+    DaySlot.NOON -> R.string.slot_noon
+    DaySlot.NIGHT -> R.string.slot_night
+}
 
 private fun dayLabel(index: Int): String =
     DayOfWeek.of(index + 1).getDisplayName(TextStyle.SHORT, Locale.getDefault())
@@ -50,6 +59,7 @@ fun HabitEditorDialog(
     var name by remember { mutableStateOf(initial.name) }
     var emoji by remember { mutableStateOf(initial.emoji) }
     var mask by remember { mutableStateOf(initial.daysMask) }
+    var slots by remember { mutableStateOf(initial.slotsMask) }
     var reminder by remember { mutableStateOf(initial.reminderMinutes) }
     var showTime by remember { mutableStateOf(false) }
     val isNew = initial.id == 0L
@@ -90,6 +100,28 @@ fun HabitEditorDialog(
                         )
                     }
                 }
+                Text(
+                    stringResource(R.string.habit_slots),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    DaySlot.entries.forEach { slot ->
+                        Pastilla(
+                            texto = slotEmoji(slot) + " " + stringResource(slotLabelRes(slot)),
+                            activa = slots and slot.bit != 0,
+                            onClick = { slots = slots xor slot.bit },
+                        )
+                    }
+                }
+                Text(
+                    stringResource(R.string.habit_slots_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -121,7 +153,7 @@ fun HabitEditorDialog(
                 // A habit needs a name and at least one scheduled weekday.
                 enabled = name.isNotBlank() && mask != 0,
                 onClick = { onSave(
-                        initial.copy(name = name.trim(), emoji = emoji.trim(), daysMask = mask, reminderMinutes = reminder),
+                        initial.copy(name = name.trim(), emoji = emoji.trim(), daysMask = mask, slotsMask = slots, reminderMinutes = reminder),
                     ) },
             )
         },

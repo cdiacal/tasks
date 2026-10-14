@@ -15,11 +15,18 @@ data class Habit(
     val createdAt: Long = System.currentTimeMillis(),
     /** Daily reminder time as minutes after local midnight, or null for no reminder. */
     val reminderMinutes: Int? = null,
+    /** Bit i set = the habit is done in [DaySlot] i+1 (morning, noon, night); 0 = once a day, any time. */
+    val slotsMask: Int = 0,
 )
 
-/** One row per (habit, day) that was completed. Days are local epoch days. */
-@Entity(tableName = "habit_checks", primaryKeys = ["habitId", "epochDay"])
+/**
+ * One row per (habit, day, slot) that was completed. Days are local epoch days. [slot] is a
+ * [DaySlot] value, or 0 for a plain "done today" tick (habits without day slots, and ticks made
+ * before slots existed).
+ */
+@Entity(tableName = "habit_checks", primaryKeys = ["habitId", "epochDay", "slot"])
 data class HabitCheck(
     val habitId: Long,
     val epochDay: Long,
+    val slot: Int = 0,
 )

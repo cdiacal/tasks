@@ -91,6 +91,11 @@
     <string name="habits_empty">Aún no tienes hábitos. Pulsa «Nuevo hábito» para crear el primero: beber agua, leer, hacer ejercicio…</string>
     <string name="new_habit">Nuevo hábito</string>
     <string name="edit_habit">Editar hábito</string>
+    <string name="slot_morning">Mañana</string>
+    <string name="slot_noon">Mediodía</string>
+    <string name="slot_night">Noche</string>
+    <string name="habit_slots">Momentos del día</string>
+    <string name="habit_slots_hint">Sin elegir ninguno, se hace una vez al día a cualquier hora. Si eliges varios, hay que cumplir cada uno (por ejemplo, mañana y noche = dos veces al día).</string>
     <string name="habit_name">Nombre del hábito</string>
     <string name="habit_days">Días en los que lo haces</string>
     <string name="delete_habit_hint">Al eliminarlo se borra también todo su historial.</string>

@@ -45,9 +45,11 @@ import com.cdiacal.tasks.data.TaskDatabase
 import com.cdiacal.tasks.habits.HabitItem
 import com.cdiacal.tasks.habits.HabitsState
 import com.cdiacal.tasks.habits.buildHabitsState
+import com.cdiacal.tasks.habits.slotEmoji
 import java.time.LocalDate
 
 private val HabitIdKey = ActionParameters.Key<Long>("habit_id")
+private val SlotKey = ActionParameters.Key<Int>("slot")
 
 /** Today's habits with a one-tap check. Same fixed widget palette as the tasks widget. */
 class HabitsWidget : GlanceAppWidget() {
@@ -79,13 +81,22 @@ class ToggleHabitAction : ActionCallback {
     }
 }
 
+/** Ticks / unticks one part of today (morning / noon / night) of a habit from the widget. */
+class ToggleHabitSlotAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val id = parameters[HabitIdKey] ?: return
+        val slot = parameters[SlotKey] ?: return
+        createHabitRepository(context).toggleSlot(id, LocalDate.now().toEpochDay(), slot)
+    }
+}
+
 @Composable
 private fun HabitsWidgetContent(state: HabitsState) {
     val context = LocalContext.current
     val openHabits = Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_HABITS, true)
     // Open habits first; done ones sink to the bottom (sortedBy is stable).
     val due = state.items.filter { it.scheduledToday }.sortedBy { it.doneToday }
-    val allDone = state.todayTotal > 0 && state.todayDone == state.todayTotal
+    val allDone = state.todaySlotsTotal > 0 && state.todaySlotsDone == state.todaySlotsTotal
 
     Column(
         GlanceModifier
@@ -102,7 +113,7 @@ private fun HabitsWidgetContent(state: HabitsState) {
                 if (state.todayTotal == 0) {
                     context.getString(R.string.widget_habits_nothing)
                 } else {
-                    context.getString(R.string.widget_habits_progress, state.todayDone, state.todayTotal)
+                    context.getString(R.string.widget_habits_progress, state.todaySlotsDone, state.todaySlotsTotal)
                 },
                 style = TextStyle(color = if (allDone) Green else TextDim, fontSize = 12.sp),
             )
@@ -129,25 +140,27 @@ private fun Message(text: String, open: Intent) {
 private fun HabitRow(item: HabitItem) {
     val title = listOf(item.habit.emoji, item.habit.name).filter { it.isNotBlank() }.joinToString(" ")
     Row(GlanceModifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        // Larger tap target than the visible 20 dp circle.
-        Box(
-            GlanceModifier
-                .size(40.dp)
-                .clickable(actionRunCallback<ToggleHabitAction>(actionParametersOf(HabitIdKey to item.habit.id))),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (item.doneToday) {
-                Box(
-                    GlanceModifier.size(20.dp).background(ImageProvider(R.drawable.widget_check_done_background)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("✓", style = TextStyle(color = ColorProvider(Color(0xFF152C52)), fontSize = 13.sp, fontWeight = FontWeight.Bold))
+        if (item.slots.isEmpty()) {
+            // Larger tap target than the visible 20 dp circle.
+            Box(
+                GlanceModifier
+                    .size(40.dp)
+                    .clickable(actionRunCallback<ToggleHabitAction>(actionParametersOf(HabitIdKey to item.habit.id))),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (item.doneToday) {
+                    Box(
+                        GlanceModifier.size(20.dp).background(ImageProvider(R.drawable.widget_check_done_background)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("✓", style = TextStyle(color = ColorProvider(Color(0xFF152C52)), fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                    }
+                } else {
+                    Box(GlanceModifier.size(20.dp).background(ImageProvider(R.drawable.widget_check_background))) {}
                 }
-            } else {
-                Box(GlanceModifier.size(20.dp).background(ImageProvider(R.drawable.widget_check_background))) {}
             }
+            Spacer(GlanceModifier.width(4.dp))
         }
-        Spacer(GlanceModifier.width(4.dp))
         Column(GlanceModifier.defaultWeight()) {
             Text(
                 title,
@@ -156,6 +169,28 @@ private fun HabitRow(item: HabitItem) {
             )
             if (item.streaks.current > 0) {
                 Text("🔥 ${item.streaks.current}", style = TextStyle(color = TextDim, fontSize = 11.sp))
+            }
+        }
+        // A habit done several times a day: one tap target per part of the day.
+        item.slots.forEach { cell ->
+            Box(
+                GlanceModifier
+                    .size(38.dp)
+                    .clickable(
+                        actionRunCallback<ToggleHabitSlotAction>(
+                            actionParametersOf(HabitIdKey to item.habit.id, SlotKey to cell.slot.value),
+                        ),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    GlanceModifier
+                        .size(30.dp)
+                        .background(ImageProvider(if (cell.done) R.drawable.widget_check_done_background else R.drawable.widget_check_background)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(slotEmoji(cell.slot), style = TextStyle(fontSize = 14.sp))
+                }
             }
         }
     }

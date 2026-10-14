@@ -26,14 +26,18 @@ interface HabitDao {
     @Query("DELETE FROM habit_checks WHERE habitId = :habitId")
     suspend fun deleteChecksFor(habitId: Long)
 
-    @Query("SELECT COUNT(*) FROM habit_checks WHERE habitId = :habitId AND epochDay = :epochDay")
-    suspend fun isChecked(habitId: Long, epochDay: Long): Int
+    @Query("SELECT * FROM habit_checks WHERE habitId = :habitId AND epochDay = :epochDay")
+    suspend fun checksForDay(habitId: Long, epochDay: Long): List<HabitCheck>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCheck(check: HabitCheck)
 
+    /** Clears the whole day (every slot). */
     @Query("DELETE FROM habit_checks WHERE habitId = :habitId AND epochDay = :epochDay")
     suspend fun uncheck(habitId: Long, epochDay: Long)
+
+    @Query("DELETE FROM habit_checks WHERE habitId = :habitId AND epochDay = :epochDay AND slot = :slot")
+    suspend fun uncheckSlot(habitId: Long, epochDay: Long, slot: Int)
 
     // Used by backup/restore.
     @Query("SELECT * FROM habits")

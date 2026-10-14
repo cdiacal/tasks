@@ -14,7 +14,7 @@ import com.cdiacal.tasks.habits.HabitDao
 // the same schema file ("Empty schema file"), and no exported schemas are kept in the repo.
 @Database(
     entities = [Task::class, Category::class, Habit::class, HabitCheck::class, Subtask::class, TaskCompletion::class],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class TaskDatabase : RoomDatabase() {
@@ -100,6 +100,23 @@ abstract class TaskDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN slotsMask INTEGER NOT NULL DEFAULT 0")
+                // The checks' primary key grows a third column (the slot), so the table is rebuilt.
+                db.execSQL(
+                    "CREATE TABLE habit_checks_new (" +
+                        "habitId INTEGER NOT NULL, " +
+                        "epochDay INTEGER NOT NULL, " +
+                        "slot INTEGER NOT NULL DEFAULT 0, " +
+                        "PRIMARY KEY(habitId, epochDay, slot))",
+                )
+                db.execSQL("INSERT INTO habit_checks_new (habitId, epochDay, slot) SELECT habitId, epochDay, 0 FROM habit_checks")
+                db.execSQL("DROP TABLE habit_checks")
+                db.execSQL("ALTER TABLE habit_checks_new RENAME TO habit_checks")
+            }
+        }
+
         @Volatile private var instance: TaskDatabase? = null
 
         fun get(context: Context): TaskDatabase =
@@ -108,7 +125,7 @@ abstract class TaskDatabase : RoomDatabase() {
                     context.applicationContext,
                     TaskDatabase::class.java,
                     "tasks.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build().also { instance = it }
             }
     }
 }

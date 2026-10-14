@@ -35,6 +35,9 @@ class HabitsViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggle(habitId: Long, epochDay: Long) = viewModelScope.launch { repository.toggle(habitId, epochDay) }
 
+    fun toggleSlot(habitId: Long, epochDay: Long, slot: Int) =
+        viewModelScope.launch { repository.toggleSlot(habitId, epochDay, slot) }
+
     fun save(habit: Habit) = viewModelScope.launch { repository.save(habit) }
 
     fun delete(habit: Habit) = viewModelScope.launch { repository.delete(habit) }

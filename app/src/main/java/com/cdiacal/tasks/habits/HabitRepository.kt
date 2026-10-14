@@ -32,13 +32,43 @@ class HabitRepository(
         onChanged()
     }
 
-    /** Marks the day done, or undoes it when it was already done. */
+    /**
+     * Marks the whole day done (every slot of the habit), or clears it when it was already done.
+     * Used by the week strip and the calendar.
+     */
     suspend fun toggle(habitId: Long, epochDay: Long) {
         db.withTransaction {
-            if (dao.isChecked(habitId, epochDay) > 0) {
-                dao.uncheck(habitId, epochDay)
-            } else {
-                dao.insertCheck(HabitCheck(habitId, epochDay))
+            val habit = dao.getHabit(habitId)
+            if (habit != null) {
+                val stored = dao.checksForDay(habitId, epochDay).map { it.slot }.toSet()
+                if (isDayComplete(habit.slotsMask, stored)) {
+                    dao.uncheck(habitId, epochDay)
+                } else if (habit.slotsMask == 0) {
+                    dao.insertCheck(HabitCheck(habitId, epochDay, 0))
+                } else {
+                    slotsOf(habit.slotsMask).forEach { dao.insertCheck(HabitCheck(habitId, epochDay, it.value)) }
+                }
+            }
+        }
+        onChanged()
+    }
+
+    /** Ticks or unticks one part of the day (morning / noon / night) of a habit. */
+    suspend fun toggleSlot(habitId: Long, epochDay: Long, slot: Int) {
+        db.withTransaction {
+            val habit = dao.getHabit(habitId)
+            if (habit != null) {
+                val stored = dao.checksForDay(habitId, epochDay).map { it.slot }.toSet()
+                when {
+                    slot in stored -> dao.uncheckSlot(habitId, epochDay, slot)
+                    0 in stored -> {
+                        // A whole-day tick from before slots existed: split it into its slots, minus this one.
+                        dao.uncheckSlot(habitId, epochDay, 0)
+                        slotsOf(habit.slotsMask).filter { it.value != slot }
+                            .forEach { dao.insertCheck(HabitCheck(habitId, epochDay, it.value)) }
+                    }
+                    else -> dao.insertCheck(HabitCheck(habitId, epochDay, slot))
+                }
             }
         }
         onChanged()

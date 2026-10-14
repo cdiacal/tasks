@@ -32,6 +32,22 @@ class BackupJsonTest {
         assertEquals(checks, data.habitChecks)
     }
 
+    @Test fun habitSlotsAndSlotChecksRoundTrip() {
+        val habits = listOf(Habit(id = 7, name = "Pastilla", createdAt = 1, slotsMask = 0b101))
+        val checks = listOf(HabitCheck(7, 20_000, 1), HabitCheck(7, 20_000, 3))
+        val data = BackupJson.decode(BackupJson.encode(tasks, categories, 0, habits, checks))
+        assertEquals(habits, data.habits)
+        assertEquals(checks, data.habitChecks)
+    }
+
+    @Test fun oldBackupChecksWithoutSlotDecodeAsWholeDayTicks() {
+        val json = """{"app":"tareas","version":1,"tasks":[],"categories":[],"habits":[{"id":1,"name":"a","createdAt":1}],""" +
+            """"habitChecks":[{"habitId":1,"epochDay":5}]}"""
+        val data = BackupJson.decode(json)
+        assertEquals(0, data.habits!!.single().slotsMask)
+        assertEquals(0, data.habitChecks.single().slot)
+    }
+
     @Test fun backupWithoutHabitsSectionDecodesToNull() {
         val json = """{"app":"tareas","version":1,"tasks":[],"categories":[]}"""
         assertNull(BackupJson.decode(json).habits)

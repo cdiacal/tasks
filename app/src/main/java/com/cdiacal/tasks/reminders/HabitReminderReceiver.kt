@@ -13,6 +13,8 @@ import com.cdiacal.tasks.R
 import com.cdiacal.tasks.data.TaskDatabase
 import com.cdiacal.tasks.habits.Habit
 import com.cdiacal.tasks.habits.HabitCheck
+import com.cdiacal.tasks.habits.isDayComplete
+import com.cdiacal.tasks.habits.nextPendingSlot
 import com.cdiacal.tasks.widget.HabitsWidget
 import androidx.glance.appwidget.updateAll
 import java.time.LocalDate
@@ -34,13 +36,17 @@ class HabitReminderReceiver : BroadcastReceiver() {
                 val dao = TaskDatabase.get(context).habitDao()
                 val today = LocalDate.now().toEpochDay()
                 if (intent.action == ACTION_DONE) {
-                    dao.insertCheck(HabitCheck(habitId, today))
+                    val habit = dao.getHabit(habitId) ?: return@launch
+                    // «Hecho» ticks the next open part of the day (or the day itself for a plain habit).
+                    val stored = dao.checksForDay(habitId, today).map { it.slot }.toSet()
+                    nextPendingSlot(habit.slotsMask, stored)?.let { dao.insertCheck(HabitCheck(habitId, today, it)) }
                     NotificationManagerCompat.from(context).cancel(notificationId(habitId))
                     HabitsWidget().updateAll(context)
                 } else {
                     // A deleted habit has nothing to remind about and is not rescheduled.
                     val habit = dao.getHabit(habitId) ?: return@launch
-                    if (dao.isChecked(habitId, today) == 0) show(context, habit)
+                    val stored = dao.checksForDay(habitId, today).map { it.slot }.toSet()
+                    if (!isDayComplete(habit.slotsMask, stored)) show(context, habit)
                     HabitReminderScheduler(context).sync(habit) // schedule the next occurrence
                 }
             } finally {

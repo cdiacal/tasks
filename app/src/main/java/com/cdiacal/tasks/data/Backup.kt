@@ -105,7 +105,8 @@ object BackupJson {
                                 .put("emoji", h.emoji)
                                 .put("daysMask", h.daysMask)
                                 .put("createdAt", h.createdAt)
-                                .put("reminderMinutes", h.reminderMinutes ?: JSONObject.NULL),
+                                .put("reminderMinutes", h.reminderMinutes ?: JSONObject.NULL)
+                                .put("slotsMask", h.slotsMask),
                         )
                     }
                 },
@@ -113,7 +114,9 @@ object BackupJson {
             .put(
                 "habitChecks",
                 JSONArray().apply {
-                    habitChecks.forEach { c -> put(JSONObject().put("habitId", c.habitId).put("epochDay", c.epochDay)) }
+                    habitChecks.forEach { c ->
+                        put(JSONObject().put("habitId", c.habitId).put("epochDay", c.epochDay).put("slot", c.slot))
+                    }
                 },
             )
         return root.toString(2)
@@ -151,13 +154,14 @@ object BackupJson {
                         daysMask = o.optInt("daysMask", ALL_DAYS),
                         createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                         reminderMinutes = o.longOrNull("reminderMinutes")?.toInt(),
+                        slotsMask = o.optInt("slotsMask", 0),
                     )
                 }
             } else {
                 null
             }
             val checks = root.optJSONArray("habitChecks").objects().map { o ->
-                HabitCheck(habitId = o.getLong("habitId"), epochDay = o.getLong("epochDay"))
+                HabitCheck(habitId = o.getLong("habitId"), epochDay = o.getLong("epochDay"), slot = o.optInt("slot", 0))
             }
             val subtasks = root.optJSONArray("subtasks").objects().map { o ->
                 Subtask(

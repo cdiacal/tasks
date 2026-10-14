@@ -93,7 +93,8 @@ fun buildMonthGrid(month: YearMonth, mask: Int, done: Set<Long>, startDay: Long,
 /** The earliest day with any history for the habit: its creation day or its earliest tick. */
 fun historyStart(startDay: Long, done: Set<Long>): Long = firstDay(startDay, done)
 
-data class DayCell(val epochDay: Long, val scheduled: Boolean, val done: Boolean, val isToday: Boolean)
+/** [partial]: some but not all of the day's slots are done. */
+data class DayCell(val epochDay: Long, val scheduled: Boolean, val done: Boolean, val isToday: Boolean, val partial: Boolean = false)
 
 data class HabitItem(
     val habit: Habit,
@@ -105,6 +106,8 @@ data class HabitItem(
     /** Every completed day (local epoch days) and the habit's creation day, for the calendar. */
     val doneDays: Set<Long>,
     val startDay: Long,
+    /** Today's slots (morning / noon / night) with their state; empty for a once-a-day habit. */
+    val slots: List<SlotCell> = emptyList(),
 )
 
 data class HabitsState(
@@ -115,6 +118,9 @@ data class HabitsState(
     val weekScheduled: Int = 0,
     /** Longest *current* streak among all habits. */
     val bestCurrentStreak: Int = 0,
+    /** Today's pending items counting each day slot on its own (a habit with 2 slots counts 2). */
+    val todaySlotsDone: Int = 0,
+    val todaySlotsTotal: Int = 0,
     /** Today's local epoch day when the state was built. */
     val today: Long = 0,
 ) {
@@ -127,11 +133,15 @@ fun buildHabitsState(
     today: Long,
     zone: ZoneId = ZoneId.systemDefault(),
 ): HabitsState {
-    val doneByHabit = checks.groupBy({ it.habitId }, { it.epochDay }).mapValues { it.value.toSet() }
+    val checksByHabit = checks.groupBy { it.habitId }
     var weekDone = 0
     var weekScheduled = 0
     val items = habits.map { habit ->
-        val done = doneByHabit[habit.id].orEmpty()
+        val own = checksByHabit[habit.id].orEmpty()
+        val done = completeDays(habit.slotsMask, own)
+        val storedByDay = own.groupBy({ it.epochDay }, { it.slot }).mapValues { it.value.toSet() }
+        val todayStored = storedByDay[today].orEmpty()
+        val slotCells = slotsOf(habit.slotsMask).map { SlotCell(it, it.value in todayStored || 0 in todayStored) }
         val start = Instant.ofEpochMilli(habit.createdAt).atZone(zone).toLocalDate().toEpochDay()
         val (wd, ws) = weekProgress(habit.daysMask, done, start, today)
         weekDone += wd
@@ -140,12 +150,13 @@ fun buildHabitsState(
             habit = habit,
             streaks = computeStreaks(habit.daysMask, done, start, today),
             week = (today - 6..today).map { day ->
-                DayCell(day, isScheduled(habit.daysMask, day), day in done, day == today)
+                DayCell(day, isScheduled(habit.daysMask, day), day in done, day == today, partial = day !in done && day in storedByDay)
             },
             scheduledToday = isScheduled(habit.daysMask, today),
             doneToday = today in done,
             doneDays = done,
             startDay = start,
+            slots = slotCells,
         )
     }
     val dueToday = items.filter { it.scheduledToday }
@@ -153,6 +164,8 @@ fun buildHabitsState(
         items = items,
         todayDone = dueToday.count { it.doneToday },
         todayTotal = dueToday.size,
+        todaySlotsDone = dueToday.sumOf { item -> if (item.slots.isEmpty()) (if (item.doneToday) 1 else 0) else item.slots.count { it.done } },
+        todaySlotsTotal = dueToday.sumOf { item -> maxOf(1, item.slots.size) },
         weekDone = weekDone,
         weekScheduled = weekScheduled,
         bestCurrentStreak = items.maxOfOrNull { it.streaks.current } ?: 0,
